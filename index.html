@@ -233,8 +233,11 @@ const assets = {
     smallIdle: new Image(), smallAtk: new Image(),
     predIdle: new Image(), predAtk: new Image(),
     elephantIdle: new Image(), elephantAtk: new Image(),
-    bossIdle: new Image(), bossAtk: new Image()
+    bossIdle: new Image(), bossAtk: new Image(),
+    // New Wall Textures
+    wall1: new Image(), wall2: new Image(), wall3: new Image()
 };
+
 assets.bearIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-4-1.png';
 assets.bearAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-6-1.png';
 assets.smallIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-10.png';
@@ -245,18 +248,22 @@ assets.elephantIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/ref
 assets.elephantAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/imag69.png';
 assets.bossIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image70.png';
 assets.bossAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image71.png';
+// Walls Source
+assets.wall1.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall2.jpg';
+assets.wall2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall%20area%201.png';
+assets.wall3.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall3.jpg';
 
 const MAPS = [
-    { n: "The Fuzzy Forest", m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:6.5,y:1.5,e:"BEAR"},{x:4.5,y:5.5,e:"SMALL"}], colors:["#FF80AB","#F48FB1"] },
-    { n: "The Velvet Vaults", m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [{x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"}], colors:["#CE93D8","#BA68C8"] },
-    { n: "The Velvet Gauntlet", m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"}], colors:["#9575CD","#7E57C2"] },
-    { n: "Sugar Sanctuary", m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.1], enemies: [{x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true}], colors:["#F8BBD0","#F06292"], isSecret:true },
-    { n: "The Starry Summit", m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"BOSS_FINAL"}, colors:["#4FC3F7","#29B6F6"] }
+    { n: "The Fuzzy Forest", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:6.5,y:1.5,e:"BEAR"},{x:4.5,y:5.5,e:"SMALL"}] },
+    { n: "The Velvet Vaults", tex: assets.wall2, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [{x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"}] },
+    { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"}] },
+    { n: "Sugar Sanctuary", tex: assets.wall2, m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.1], enemies: [{x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true}], isSecret:true },
+    { n: "The Starry Summit", tex: assets.wall3, m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"BOSS_FINAL"} }
 ];
 
 let levelIdx = 0, player, sprites = [], projectiles = [], particles = [], keys = {}, zBuf = new Array(400);
 let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, isLoading = false, maxMultSeen = 1;
-let levelTransitioning = false; // Safety lock for transitions
+let levelTransitioning = false;
 
 function startGame() {
     document.getElementById('start-menu').style.display = 'none';
@@ -277,8 +284,6 @@ function loadLevel(idx) {
     isLoading = true;
     
     levelIdx = idx; const l = MAPS[idx];
-    
-    // Explicit position reset to new map start
     player.x = l.start[0]; 
     player.y = l.start[1];
     
@@ -296,7 +301,6 @@ function loadLevel(idx) {
     projectiles = []; particles = [];
     showLevelCard(l.n, l.isSecret ? "SECRET FOUND!" : "LEVEL " + (idx + 1));
     
-    // Lock duration to allow assets and coordinates to settle
     setTimeout(() => { 
         isLoading = false; 
         levelTransitioning = false;
@@ -360,7 +364,6 @@ function checkWin() {
     const enemiesRemaining = sprites.some(s => s.alive && !s.pickup && s.e !== "🌀");
     if (!enemiesRemaining) {
         if (MAPS[levelIdx].isSecret) {
-            // Portal logic: Enable transition tile and visual sprite
             MAPS[levelIdx].m[2][2] = 9;
             if (!sprites.some(s => s.e === "🌀")) {
                 sprites.push({x: 2.5, y: 2.5, e: "🌀", alive: true, scale: 2.0});
@@ -429,13 +432,11 @@ function update() {
     const canMove = (x, y) => {
         let nx = Math.floor(x), ny = Math.floor(y);
         if (!map[ny] || map[ny][nx] === undefined) return false;
-        
-        // Navigation Tile 9 Fix: Gate entrance with enemy check
         if (map[ny][nx] === 9) { 
             const enemiesLeft = sprites.some(s => s.alive && !s.pickup && s.e !== "🌀");
             if (!enemiesLeft && !levelTransitioning) {
-                if(levelIdx === 2) loadLevel(3); // Exit Gauntlet -> Secret Sanctuary
-                else if(levelIdx === 3) loadLevel(4); // Exit Sanctuary -> Boss
+                if(levelIdx === 2) loadLevel(3); 
+                else if(levelIdx === 3) loadLevel(4); 
                 else loadLevel(2);
             }
             return false; 
@@ -512,22 +513,46 @@ function draw() {
     let currentBob = Math.sin(bob) * 10;
     ctx.translate(0, currentBob);
     if (shake > 0) ctx.translate((Math.random()-0.5)*20*shake, (Math.random()-0.5)*20*shake);
-    ctx.fillStyle = "#444"; ctx.fillRect(0,-50,400,200); ctx.fillStyle = "#222"; ctx.fillRect(0,150,400,200);
+    ctx.fillStyle = "#221122"; ctx.fillRect(0,-100,400,250); // Sky
+    ctx.fillStyle = "#111"; ctx.fillRect(0,150,400,200); // Floor
 
-    const map = MAPS[levelIdx].m, cols = MAPS[levelIdx].colors;
+    const map = MAPS[levelIdx].m;
+    const tex = MAPS[levelIdx].tex;
+
     for (let i = 0; i < 400; i++) {
         let ang = (player.dir - 0.5) + (i / 400), d = 0, hit = 0, side = 0;
+        let rayX = Math.cos(ang), rayY = Math.sin(ang);
+        
         while (hit === 0 && d < 12) {
-            d += 0.05;
-            let tx = Math.floor(player.x + Math.cos(ang)*d), ty = Math.floor(player.y + Math.sin(ang)*d);
-            if (map[ty] && map[ty][tx]) { hit = map[ty][tx]; side = (Math.abs((player.x + Math.cos(ang)*d) % 1) < 0.05) ? 1 : 0; }
+            d += 0.02;
+            let tx = Math.floor(player.x + rayX*d), ty = Math.floor(player.y + rayY*d);
+            if (map[ty] && map[ty][tx]) { 
+                hit = map[ty][tx]; 
+                let hitX = player.x + rayX*d, hitY = player.y + rayY*d;
+                side = (Math.abs(hitX - Math.round(hitX)) < Math.abs(hitY - Math.round(hitY))) ? 0 : 1;
+            }
         }
         zBuf[i] = d;
-        let h = 300 / (d * Math.cos(ang - player.dir)), baseColor = hit === 9 ? "#fff176" : (i % 2 ? cols[0] : cols[1]);
-        let wallGrad = ctx.createLinearGradient(0, 150 - h/2, 0, 150 + h/2);
-        wallGrad.addColorStop(0, "white"); wallGrad.addColorStop(0.1, baseColor); wallGrad.addColorStop(1, "black"); 
-        ctx.globalAlpha = Math.max(0.2, 1 - (d / 12)) * (side ? 1.2 : 0.8);
-        ctx.fillStyle = wallGrad; ctx.fillRect(i, 150 - h/2, 1, h); ctx.globalAlpha = 1.0;
+        let h = 300 / (d * Math.cos(ang - player.dir));
+        
+        // Texture Mapping Logic
+        let wallX = (side === 0) ? (player.y + rayY*d) : (player.x + rayX*d);
+        wallX -= Math.floor(wallX);
+        let texX = Math.floor(wallX * tex.width);
+        if (side === 0 && rayX > 0) texX = tex.width - texX - 1;
+        if (side === 1 && rayY < 0) texX = tex.width - texX - 1;
+
+        ctx.globalAlpha = Math.max(0.2, 1 - (d / 12));
+        if (hit === 9) { // Portal highlight
+            ctx.fillStyle = "white"; ctx.fillRect(i, 150-h/2, 1, h);
+        } else {
+            ctx.drawImage(tex, texX, 0, 1, tex.height, i, 150 - h/2, 1, h);
+            if (side === 1) { // Shadowing for depth
+                ctx.fillStyle = "rgba(0,0,0,0.3)";
+                ctx.fillRect(i, 150-h/2, 1, h);
+            }
+        }
+        ctx.globalAlpha = 1.0;
     }
 
     let itms = [...sprites.filter(s=>s.alive), ...projectiles.map(p=>({x:p.x, y:p.y, e:"💗", scale:0.4})), ...particles.map(p=>({x:p.x, y:p.y, e:p.c, scale:(p.scale || 0.3) * p.l, l:p.l}))];
@@ -562,7 +587,6 @@ function drawMinimap() {
     for(let y=0; y<map.length; y++) for(let x=0; x<map[y].length; x++) if(map[y][x]) mCtx.fillRect(x*cw, y*ch, cw, ch);
     sprites.forEach(s => { if(s.alive) { mCtx.fillStyle = (s.pickup || s.e === "🌀") ? "cyan" : "#ff4444"; mCtx.beginPath(); mCtx.arc(s.x*cw, s.y*ch, 2, 0, Math.PI*2); mCtx.fill(); } });
     mCtx.fillStyle = "#44ff44"; mCtx.beginPath(); mCtx.arc(player.x*cw, player.y*ch, 3, 0, Math.PI*2); mCtx.fill();
-    mCtx.strokeStyle = "#44ff44"; mCtx.beginPath(); mCtx.moveTo(player.x*cw, player.y*ch); mCtx.lineTo((player.x + Math.cos(player.dir)*0.8)*cw, (player.y + Math.sin(player.dir)*0.8)*ch); mCtx.stroke();
 }
 
 function loop() { if(gameActive) { update(); draw(); } requestAnimationFrame(loop); }
