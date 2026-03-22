@@ -6,7 +6,16 @@
     <title>SFWDOOM: Plushie Edition</title>
     <style>
         :root { --pink: #ff69b4; --hot-pink: #ff1493; --sky: #4fc3f7; --purple: #9575CD; --gold: #ffd700; }
-        body { margin: 0; background: #1a1a1a; overflow: hidden; font-family: 'Arial Rounded MT Bold', sans-serif; touch-action: none; }
+        body { 
+            margin: 0; 
+            background: #1a1a1a; 
+            overflow: hidden; 
+            font-family: 'Arial Rounded MT Bold', sans-serif; 
+            touch-action: none;
+            /* Prevent accidental text selection on the whole game */
+            user-select: none;
+            -webkit-user-select: none;
+        }
         
         #start-menu { 
             position: fixed; 
@@ -27,7 +36,7 @@
         .logo-main { font-size: 64px; font-weight: 900; letter-spacing: -2px; color: var(--hot-pink); text-shadow: 0 0 20px rgba(255, 20, 147, 0.5); margin: 0; }
         .logo-sub { font-size: 18px; color: var(--sky); letter-spacing: 4px; text-transform: uppercase; margin: 0; }
         
-        .start-btn { padding: 20px 60px; font-size: 24px; background: var(--hot-pink); color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px #a30b5d; transition: transform 0.1s; animation: pulse 1.5s infinite; }
+        .start-btn { padding: 20px 60px; font-size: 24px; background: var(--hot-pink); color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px #a30b5d; transition: transform 0.1s; animation: pulse 1.5s infinite; -webkit-tap-highlight-color: transparent; }
         .start-btn:active { transform: translateY(4px); box-shadow: 0 2px #a30b5d; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
@@ -51,14 +60,27 @@
         
         #controls { display: flex; width: 100%; max-width: 500px; justify-content: space-around; align-items: center; }
         .d-pad { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 5px; }
-        .btn { background: #ffb6c1; border: none; border-radius: 10px; font-size: 20px; color: white; box-shadow: 0 4px #d88191; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        
+        /* UPDATED BUTTON STYLES */
+        .btn { 
+            background: #ffb6c1; 
+            border: none; 
+            border-radius: 10px; 
+            font-size: 20px; 
+            color: white; 
+            box-shadow: 0 4px #d88191; 
+            cursor: pointer; 
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none;
+            -webkit-user-select: none;
+        }
         .btn:active { transform: translateY(2px); box-shadow: 0 2px #d88191; }
         
         #btn-boop { width: 90px; height: 90px; background: var(--hot-pink); border-radius: 50%; font-size: 14px; font-weight: bold; border: 4px solid #fff; box-shadow: 0 6px #a30b5d; }
         #btn-sprint { width: 60px; height: 60px; background: var(--sky); border-radius: 12px; font-size: 24px; box-shadow: 0 4px #0288d1; }
         
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; color: white; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .overlay button { padding: 15px 40px; background: var(--pink); border: none; border-radius: 30px; color: white; font-weight: bold; font-size: 1.2rem; margin-top: 20px; }
+        .overlay button { padding: 15px 40px; background: var(--pink); border: none; border-radius: 30px; color: white; font-weight: bold; font-size: 1.2rem; margin-top: 20px; -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body>
@@ -336,41 +358,4 @@ function draw() {
         wallGrad.addColorStop(0, "white"); wallGrad.addColorStop(0.1, baseColor); wallGrad.addColorStop(1, "black"); 
         ctx.globalAlpha = Math.max(0.2, 1 - (d / 12)) * (side ? 1.2 : 0.8);
         ctx.fillStyle = wallGrad; ctx.fillRect(i, 150 - h/2, 1, h); ctx.globalAlpha = 1.0;
-    }
-
-    let itms = [...sprites.filter(s=>s.alive), ...projectiles.map(p=>({x:p.x, y:p.y, e:"💗", scale:0.4})), ...particles.map(p=>({x:p.x, y:p.y, e:p.c, scale:(p.scale || 0.3) * p.l, l:p.l}))];
-    itms.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2)).forEach(s => {
-        let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx + dy*dy), ang = Math.atan2(dy, dx) - player.dir;
-        while (ang < -Math.PI) ang += Math.PI*2; while (ang > Math.PI) ang -= Math.PI*2;
-        if (Math.abs(ang) < 0.8) {
-            let sx = (ang + 0.5) * 400;
-            if (zBuf[Math.floor(sx)] > dist) {
-                let sz = 300 / dist * (s.scale || (s.type === 'boss' ? 2.5 : 1)); ctx.globalAlpha = s.l || 1.0; 
-                if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "🐘") ctx.drawImage(s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "BOSS_FINAL") ctx.drawImage(s.atkTimer > 0 ? assets.bossAtk : assets.bossIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "🌀") { ctx.font = `${sz}px serif`; ctx.textAlign = "center"; ctx.fillText(s.e, sx, 150 + sz/2); }
-                else { ctx.font = `${sz}px serif`; ctx.textAlign = "center"; ctx.fillText(s.e || "✨", sx, 150 + sz/2); }
-                ctx.globalAlpha = 1.0;
-            }
-        }
-    });
-    ctx.restore(); ctx.save();
-    let wandSway = Math.cos(bob * 0.5) * 15, wandAtkY = Math.sin(attackAnim * Math.PI) * -50;
-    ctx.font = "140px serif"; ctx.textAlign = "center"; ctx.fillText("🪄", 200 + wandSway, 320 + currentBob + wandAtkY);
-    ctx.restore(); drawMinimap();
-}
-
-function drawMinimap() {
-    mCtx.clearRect(0,0,80,80); const map = MAPS[levelIdx].m, cw = 80 / map[0].length, ch = 80 / map.length;
-    mCtx.fillStyle = "rgba(255,255,255,0.2)";
-    for(let y=0; y<map.length; y++) for(let x=0; x<map[y].length; x++) if(map[y][x]) mCtx.fillRect(x*cw, y*ch, cw, ch);
-    sprites.forEach(s => { if(s.alive) { mCtx.fillStyle = s.pickup ? "cyan" : "yellow"; mCtx.beginPath(); mCtx.arc(s.x*cw, s.y*ch, 2, 0, Math.PI*2); mCtx.fill(); }});
-}
-
-function loop() { if(gameActive) { update(); draw(); } requestAnimationFrame(loop); }
-</script>
-</body>
-</html>
+ 
