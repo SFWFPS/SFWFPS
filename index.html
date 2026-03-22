@@ -164,7 +164,6 @@
             text-transform: uppercase;
             border: 4px solid #fff; 
             box-shadow: 0 0 20px var(--hot-pink);
-            animation: gentle-glow 2s infinite alternate;
         }
 
         #btn-sprint { width: 65px; height: 65px; background: linear-gradient(145deg, var(--sky), #0288d1); border-radius: 50%; border: 2px solid #fff; font-size: 24px; }
@@ -184,6 +183,11 @@
             border: 4px solid var(--hot-pink);
             box-shadow: inset 0 0 50px rgba(255, 20, 147, 0.3);
         }
+
+        .overlay-btns { display: flex; flex-direction: column; gap: 10px; }
+        .overlay-btns button { padding: 15px 40px; border: 2px solid #fff; border-radius: 50px; color: white; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; }
+        #share-btn { background: var(--sky); box-shadow: 0 0 15px var(--sky); }
+        #retry-btn { background: var(--hot-pink); box-shadow: 0 0 15px var(--hot-pink); }
     </style>
 </head>
 <body>
@@ -230,12 +234,13 @@
     <div id="overlay" class="overlay">
         <h1 id="status-msg">GAME OVER</h1>
         <div id="final-stats"></div>
-        <button id="retry-btn">RESTART QUEST</button>
+        <div class="overlay-btns">
+            <button id="share-btn">Share Your Quest 🪄</button>
+            <button id="retry-btn">RESTART QUEST</button>
+        </div>
     </div>
 
 <script>
-// Game scripts continue below as usual...
-// (Code logic truncated for brevity, but all systems remain intact)
 const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
 const mCanvas = document.getElementById('m-canvas'), mCtx = mCanvas.getContext('2d');
 const vignette = document.getElementById('vignette');
@@ -371,14 +376,40 @@ function checkWin() {
 function showEnd(msg) {
     gameActive = false;
     const overlay = document.getElementById('overlay');
+    const shareBtn = document.getElementById('share-btn');
+    shareBtn.innerText = "Share Your Quest 🪄"; 
     overlay.style.borderColor = msg.includes("VICTORY") ? "var(--sky)" : "var(--hot-pink)";
     overlay.style.boxShadow = msg.includes("VICTORY") ? "inset 0 0 50px rgba(79, 195, 247, 0.3)" : "inset 0 0 50px rgba(255, 20, 147, 0.3)";
+    
     let highScore = localStorage.getItem('sfwDoomHiScore') || 0;
     let currentScore = Math.floor(player.score);
-    if (currentScore > highScore) { localStorage.setItem('sfwDoomHiScore', currentScore); highScore = currentScore; msg = "NEW PERSONAL BEST! 🌟"; }
+    if (currentScore > highScore) { 
+        localStorage.setItem('sfwDoomHiScore', currentScore); 
+        highScore = currentScore; 
+        msg = "NEW PERSONAL BEST! 🌟"; 
+    }
+    
     overlay.style.display = 'flex';
     document.getElementById('status-msg').innerText = msg;
     document.getElementById('final-stats').innerHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);font-size:0.8em;">Best: ${highScore}</span>`;
+
+    shareBtn.onclick = () => {
+        const text = `✨ I just scored ${currentScore} on SFWDOOM: Plushie Quest!\n📍 Current Level: ${MAPS[levelIdx].n}\n\nEnter the Forest at: https://sfwdoom.fun 🪄🧸`;
+        
+        // Copy to clipboard as backup
+        navigator.clipboard.writeText(text).then(() => {
+            shareBtn.innerText = "Opening X... ✨";
+            
+            // Open X (Twitter) Compose with the pre-filled text
+            const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+            window.open(xUrl, '_blank');
+            
+            // Reset button text after short delay
+            setTimeout(() => {
+                shareBtn.innerText = "Share Your Quest 🪄";
+            }, 3000);
+        });
+    };
 }
 
 document.getElementById('retry-btn').onclick = initGame;
