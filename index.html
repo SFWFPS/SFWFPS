@@ -5,7 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SFWDOOM: Plushie Edition</title>
     <style>
-        :root { --pink: #ff69b4; --hot-pink: #ff1493; --sky: #4fc3f7; --purple: #9575CD; --gold: #ffd700; }
+        :root { 
+            --pink: #ff69b4; 
+            --hot-pink: #ff1493; 
+            --sky: #4fc3f7; 
+            --purple: #9575CD; 
+            --gold: #ffd700; 
+            --deep-bg: #1e121f;
+        }
         
         body { 
             margin: 0; 
@@ -37,7 +44,6 @@
         .logo-sub { font-size: 18px; color: var(--sky); letter-spacing: 4px; text-transform: uppercase; margin: 0; }
         
         .start-btn { padding: 20px 60px; font-size: 24px; background: var(--hot-pink); color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px #a30b5d; transition: transform 0.1s; animation: pulse 1.5s infinite; }
-        .start-btn:active { transform: translateY(4px); box-shadow: 0 2px #a30b5d; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
         #viewport { position: relative; width: 100vw; height: 50vh; background: #000; border-bottom: 4px solid var(--pink); overflow: hidden; }
@@ -52,7 +58,6 @@
         #minimap-container { position: absolute; top: 10px; right: 10px; width: 80px; height: 80px; background: rgba(0,0,0,0.6); border: 2px solid var(--pink); border-radius: 8px; overflow: hidden; }
         #m-canvas { width: 100%; height: 100%; }
 
-        /* Face HUD Styling */
         #face-hud { 
             position: absolute; 
             top: 95px; 
@@ -69,45 +74,116 @@
         }
         #player-face { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 
+        /* Ornate Console UI */
         #ui { 
             height: 50vh; 
-            background: #fff; 
+            background: radial-gradient(circle at 20px 20px, #2d1b2e 2px, transparent 0) 0 0 / 40px 40px, #1e121f; 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
             justify-content: space-evenly; 
-            padding: 10px; 
+            padding: 15px; 
             box-sizing: border-box; 
-            -webkit-touch-callout: none;
+            border-top: 5px solid var(--hot-pink);
+            box-shadow: inset 0 10px 20px rgba(0,0,0,0.5);
         }
         
-        #hud { display: flex; flex-direction: column; align-items: center; background: #fff0f5; padding: 10px 20px; border-radius: 20px; border: 2px solid #ffb6c1; width: 90%; max-width: 450px; }
-        #stats-bar { display: flex; width: 100%; justify-content: space-between; align-items: center; font-weight: bold; color: var(--hot-pink); margin-bottom: 5px; font-size: 14px; }
-        #combo-meter { width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
-        #combo-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--pink), var(--hot-pink)); transition: width 0.1s linear; }
+        #hud { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            background: rgba(0, 0, 0, 0.6); 
+            padding: 15px; 
+            border-radius: 15px; 
+            border: 2px solid var(--pink); 
+            width: 90%; 
+            max-width: 450px; 
+            box-shadow: 0 0 15px var(--hot-pink);
+            backdrop-filter: blur(5px);
+        }
+
+        #stats-bar { 
+            display: flex; 
+            width: 100%; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-family: 'Courier New', monospace; 
+            font-weight: 900; 
+            color: #fff; 
+            text-shadow: 0 0 8px var(--hot-pink);
+            margin-bottom: 10px; 
+            font-size: 14px;
+        }
+
+        #combo-meter { width: 100%; height: 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--sky); border-radius: 6px; overflow: hidden; }
+        #combo-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--sky), var(--hot-pink)); box-shadow: 0 0 10px var(--hot-pink); transition: width 0.1s linear; }
         
         #controls { display: flex; width: 100%; max-width: 500px; justify-content: space-around; align-items: center; }
-        .d-pad { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 5px; }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 8px; }
         
         .btn { 
-            background: #ffb6c1; 
-            border: none; 
-            border-radius: 10px; 
-            font-size: 20px; 
+            background: linear-gradient(145deg, #ff85c0, #d88191); 
+            border: 2px solid #fff; 
+            border-radius: 15px; 
+            font-size: 22px; 
             color: white; 
-            box-shadow: 0 4px #d88191; 
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(0,0,0,0.2); 
             cursor: pointer; 
-            -webkit-tap-highlight-color: transparent;
-            touch-action: none; 
-            user-select: none;
+            transition: all 0.1s ease;
+            touch-action: none;
         }
-        .btn:active { transform: translateY(2px); box-shadow: 0 2px #d88191; }
+        .btn:active { transform: scale(0.95); box-shadow: 2px 2px 5px rgba(0,0,0,0.5); background: var(--hot-pink); }
         
-        #btn-boop { width: 90px; height: 90px; background: var(--hot-pink); border-radius: 50%; font-size: 14px; font-weight: bold; border: 4px solid #fff; box-shadow: 0 6px #a30b5d; }
-        #btn-sprint { width: 60px; height: 60px; background: var(--sky); border-radius: 12px; font-size: 24px; box-shadow: 0 4px #0288d1; }
+        #btn-boop { 
+            width: 100px; 
+            height: 100px; 
+            background: radial-gradient(circle, var(--hot-pink), #a30b5d); 
+            border-radius: 50%; 
+            font-size: 14px; 
+            font-weight: bold; 
+            text-transform: uppercase;
+            border: 4px solid #fff; 
+            box-shadow: 0 0 20px var(--hot-pink);
+            animation: gentle-glow 2s infinite alternate;
+        }
+        @keyframes gentle-glow { from { box-shadow: 0 0 10px var(--hot-pink); } to { box-shadow: 0 0 25px var(--hot-pink), 0 0 5px var(--sky); } }
+
+        #btn-sprint { width: 65px; height: 65px; background: linear-gradient(145deg, var(--sky), #0288d1); border-radius: 50%; border: 2px solid #fff; font-size: 24px; }
         
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; color: white; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .overlay button { padding: 15px 40px; background: var(--pink); border: none; border-radius: 30px; color: white; font-weight: bold; font-size: 1.2rem; margin-top: 20px; }
+        /* Ornate Glass-morphism Overlay */
+        .overlay { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            background: radial-gradient(circle, rgba(45, 27, 46, 0.95) 0%, rgba(0, 0, 0, 0.98) 100%); 
+            z-index: 100; 
+            color: white; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            backdrop-filter: blur(10px);
+            border: 4px solid var(--hot-pink);
+            box-shadow: inset 0 0 50px rgba(255, 20, 147, 0.3);
+        }
+
+        .overlay::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 101;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        #status-msg { font-size: 3rem; font-weight: 900; text-transform: uppercase; letter-spacing: 5px; margin: 0; color: #fff; text-shadow: 0 0 10px var(--hot-pink), 0 0 20px var(--hot-pink); z-index: 102; }
+        #final-stats { font-family: 'Courier New', monospace; background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2); margin: 20px 0; line-height: 1.6; z-index: 102; }
+        
+        .overlay button { padding: 18px 50px; background: var(--hot-pink); border: 2px solid #fff; border-radius: 50px; color: white; font-weight: bold; font-size: 1.1rem; cursor: pointer; box-shadow: 0 0 15px var(--hot-pink); transition: all 0.2s; z-index: 102; text-transform: uppercase; }
+        .overlay button:hover { transform: scale(1.1); box-shadow: 0 0 30px var(--hot-pink), 0 0 10px var(--sky); }
     </style>
 </head>
 <body>
@@ -128,6 +204,7 @@
             <img id="player-face" src="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/mainface.png" alt="Status">
         </div>
     </div>
+    
     <div id="ui">
         <div id="hud">
             <div id="stats-bar">
@@ -146,12 +223,13 @@
                 <div style="grid-row: 2; grid-column: 3;"><button class="btn" id="right" style="width:100%;height:100%">▶</button></div>
             </div>
             <button class="btn" id="btn-sprint">👟</button>
-            <button class="btn" id="btn-boop">✨ BOOP!</button>
+            <button class="btn" id="btn-boop">BOOP!</button>
         </div>
     </div>
+
     <div id="overlay" class="overlay">
         <h1 id="status-msg">GAME OVER</h1>
-        <p id="final-stats"></p>
+        <div id="final-stats"></div>
         <button id="retry-btn">RESTART QUEST</button>
     </div>
 
@@ -191,8 +269,6 @@ let levelIdx = 0, player, sprites = [], projectiles = [], particles = [], keys =
 let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, isLoading = false;
 
 document.addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-
 function startGame() {
     document.getElementById('start-menu').style.display = 'none';
     initGame();
@@ -292,11 +368,19 @@ function checkWin() {
 
 function showEnd(msg) {
     gameActive = false;
+    const overlay = document.getElementById('overlay');
+    
+    // Aesthetic Color Switch
+    overlay.style.borderColor = msg.includes("VICTORY") ? "var(--sky)" : "var(--hot-pink)";
+    overlay.style.boxShadow = msg.includes("VICTORY") ? "inset 0 0 50px rgba(79, 195, 247, 0.3)" : "inset 0 0 50px rgba(255, 20, 147, 0.3)";
+
     let highScore = localStorage.getItem('sfwDoomHiScore') || 0;
     let currentScore = Math.floor(player.score);
     if (currentScore > highScore) { localStorage.setItem('sfwDoomHiScore', currentScore); highScore = currentScore; msg = "NEW PERSONAL BEST! 🌟"; }
-    document.getElementById('overlay').style.display = 'flex';
+    
+    overlay.style.display = 'flex';
     document.getElementById('status-msg').innerText = msg;
+    document.getElementById('status-msg').style.textShadow = msg.includes("VICTORY") ? "0 0 20px var(--sky)" : "0 0 20px var(--hot-pink)";
     document.getElementById('final-stats').innerHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);font-size:0.8em;">Best: ${highScore}</span>`;
 }
 
@@ -336,14 +420,12 @@ function update() {
     player.combo = Math.max(0, player.combo - 0.1); 
     player.mult = Math.floor(player.combo / 20) + 1;
 
-    // Update UI Elements
-    document.getElementById('hi-display').innerText = `🏆 ${localStorage.getItem('sfwDoomHiScore') || 0}`;
     document.getElementById('hp-display').innerText = `❤️ x${player.hp}`;
     document.getElementById('score-display').innerText = `✨ ${Math.floor(player.score)}`;
+    document.getElementById('hi-display').innerText = `🏆 ${localStorage.getItem('sfwDoomHiScore') || 0}`;
     document.getElementById('mult-display').innerText = `x${player.mult}`;
     document.getElementById('combo-fill').style.width = player.combo + "%";
 
-    // Update Dynamic Face HUD
     const faceImg = document.getElementById('player-face');
     const hpPercent = (player.hp / 15) * 100;
     if (hpPercent > 75) faceImg.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/mainface.png';
@@ -358,10 +440,10 @@ function update() {
         if (s.e === "🌀" && d < 0.6) checkWin();
         if (s.pickup && d < 0.6) { s.alive = false; player.hp = Math.min(45, player.hp + 5); checkWin(); }
         if (s.type === 'boss') {
-            s.x += Math.cos(Math.atan2(player.y-s.y, player.x-s.x)) * (s.rage ? 0.04 : 0.02);
-            s.y += Math.sin(Math.atan2(player.y-s.y, player.x-s.x)) * (s.rage ? 0.04 : 0.02);
+            s.x += Math.cos(Math.atan2(player.y-s.y, player.x-s.x)) * (s.hp < 5 ? 0.04 : 0.02);
+            s.y += Math.sin(Math.atan2(player.y-s.y, player.x-s.x)) * (s.hp < 5 ? 0.04 : 0.02);
         }
-        if (!s.pickup && s.e !== "🌀" && d < 8 && Date.now() - s.lastShot > (s.rage ? 1500 : 4000)) {
+        if (!s.pickup && s.e !== "🌀" && d < 8 && Date.now() - s.lastShot > 4000) {
             let a = Math.atan2(player.y-s.y, player.x-s.x);
             projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*.08, vy:Math.sin(a)*.08, l:150});
             s.lastShot = Date.now();
@@ -432,18 +514,9 @@ function drawMinimap() {
     const map = MAPS[levelIdx].m, cw = 80 / map[0].length, ch = 80 / map.length;
     mCtx.fillStyle = "rgba(255,255,255,0.2)";
     for(let y=0; y<map.length; y++) for(let x=0; x<map[y].length; x++) if(map[y][x]) mCtx.fillRect(x*cw, y*ch, cw, ch);
-    sprites.forEach(s => { 
-        if(s.alive) { 
-            mCtx.fillStyle = (s.pickup || s.e === "🌀") ? "cyan" : "#ff4444"; 
-            mCtx.beginPath(); mCtx.arc(s.x*cw, s.y*ch, 2, 0, Math.PI*2); mCtx.fill(); 
-        }
-    });
-    mCtx.fillStyle = "#44ff44";
-    mCtx.beginPath(); mCtx.arc(player.x*cw, player.y*ch, 3, 0, Math.PI*2); mCtx.fill();
-    mCtx.strokeStyle = "#44ff44";
-    mCtx.beginPath(); mCtx.moveTo(player.x*cw, player.y*ch);
-    mCtx.lineTo((player.x + Math.cos(player.dir)*0.8)*cw, (player.y + Math.sin(player.dir)*0.8)*ch);
-    mCtx.stroke();
+    sprites.forEach(s => { if(s.alive) { mCtx.fillStyle = (s.pickup || s.e === "🌀") ? "cyan" : "#ff4444"; mCtx.beginPath(); mCtx.arc(s.x*cw, s.y*ch, 2, 0, Math.PI*2); mCtx.fill(); } });
+    mCtx.fillStyle = "#44ff44"; mCtx.beginPath(); mCtx.arc(player.x*cw, player.y*ch, 3, 0, Math.PI*2); mCtx.fill();
+    mCtx.strokeStyle = "#44ff44"; mCtx.beginPath(); mCtx.moveTo(player.x*cw, player.y*ch); mCtx.lineTo((player.x + Math.cos(player.dir)*0.8)*cw, (player.y + Math.sin(player.dir)*0.8)*ch); mCtx.stroke();
 }
 
 function loop() { if(gameActive) { update(); draw(); } requestAnimationFrame(loop); }
