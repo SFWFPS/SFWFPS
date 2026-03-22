@@ -52,6 +52,23 @@
         #minimap-container { position: absolute; top: 10px; right: 10px; width: 80px; height: 80px; background: rgba(0,0,0,0.6); border: 2px solid var(--pink); border-radius: 8px; overflow: hidden; }
         #m-canvas { width: 100%; height: 100%; }
 
+        /* Face HUD Styling */
+        #face-hud { 
+            position: absolute; 
+            top: 95px; 
+            right: 10px; 
+            width: 80px; 
+            height: 80px; 
+            background: rgba(255, 182, 193, 0.3); 
+            border: 2px solid var(--pink); 
+            border-radius: 8px; 
+            overflow: hidden; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        #player-face { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+
         #ui { 
             height: 50vh; 
             background: #fff; 
@@ -107,6 +124,9 @@
         <div id="vignette"></div>
         <div id="level-card"><p id="level-num"></p><h2 id="level-name"></h2></div>
         <div id="minimap-container"><canvas id="m-canvas"></canvas></div>
+        <div id="face-hud">
+            <img id="player-face" src="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/mainface.png" alt="Status">
+        </div>
     </div>
     <div id="ui">
         <div id="hud">
@@ -316,11 +336,20 @@ function update() {
     player.combo = Math.max(0, player.combo - 0.1); 
     player.mult = Math.floor(player.combo / 20) + 1;
 
+    // Update UI Elements
     document.getElementById('hi-display').innerText = `🏆 ${localStorage.getItem('sfwDoomHiScore') || 0}`;
     document.getElementById('hp-display').innerText = `❤️ x${player.hp}`;
     document.getElementById('score-display').innerText = `✨ ${Math.floor(player.score)}`;
     document.getElementById('mult-display').innerText = `x${player.mult}`;
     document.getElementById('combo-fill').style.width = player.combo + "%";
+
+    // Update Dynamic Face HUD
+    const faceImg = document.getElementById('player-face');
+    const hpPercent = (player.hp / 15) * 100;
+    if (hpPercent > 75) faceImg.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/mainface.png';
+    else if (hpPercent > 50) faceImg.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/Gemini_Generated_Image_k7jgubk7jgubk7jg-Photoroom.png';
+    else if (hpPercent > 25) faceImg.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/Gemini_Generated_Image_oo1o3too1o3too1o-Photoroom.png';
+    else faceImg.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/Gemini_Generated_Image_zh1zaqzh1zaqzh1z-Photoroom.png';
 
     sprites.forEach(s => {
         if (!s.alive) return;
@@ -401,29 +430,18 @@ function draw() {
 function drawMinimap() {
     mCtx.clearRect(0,0,80,80); 
     const map = MAPS[levelIdx].m, cw = 80 / map[0].length, ch = 80 / map.length;
-    
-    // Draw walls
     mCtx.fillStyle = "rgba(255,255,255,0.2)";
     for(let y=0; y<map.length; y++) for(let x=0; x<map[y].length; x++) if(map[y][x]) mCtx.fillRect(x*cw, y*ch, cw, ch);
-    
-    // Draw enemies in RED and Pickups/Portals in CYAN
     sprites.forEach(s => { 
         if(s.alive) { 
             mCtx.fillStyle = (s.pickup || s.e === "🌀") ? "cyan" : "#ff4444"; 
             mCtx.beginPath(); mCtx.arc(s.x*cw, s.y*ch, 2, 0, Math.PI*2); mCtx.fill(); 
         }
     });
-
-    // Draw Player in GREEN
     mCtx.fillStyle = "#44ff44";
-    mCtx.beginPath();
-    mCtx.arc(player.x*cw, player.y*ch, 3, 0, Math.PI*2);
-    mCtx.fill();
-
-    // Draw player direction indicator
+    mCtx.beginPath(); mCtx.arc(player.x*cw, player.y*ch, 3, 0, Math.PI*2); mCtx.fill();
     mCtx.strokeStyle = "#44ff44";
-    mCtx.beginPath();
-    mCtx.moveTo(player.x*cw, player.y*ch);
+    mCtx.beginPath(); mCtx.moveTo(player.x*cw, player.y*ch);
     mCtx.lineTo((player.x + Math.cos(player.dir)*0.8)*cw, (player.y + Math.sin(player.dir)*0.8)*ch);
     mCtx.stroke();
 }
