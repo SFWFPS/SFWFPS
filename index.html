@@ -113,7 +113,9 @@ canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80
 const assets = {
     bearIdle: new Image(), bearAtk: new Image(),
     smallIdle: new Image(), smallAtk: new Image(),
-    predIdle: new Image(), predAtk: new Image()
+    predIdle: new Image(), predAtk: new Image(),
+    elephantIdle: new Image(), elephantAtk: new Image(),
+    bossIdle: new Image(), bossAtk: new Image()
 };
 assets.bearIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-4-1.png';
 assets.bearAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-6-1.png';
@@ -121,13 +123,17 @@ assets.smallIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/h
 assets.smallAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-18.png';
 assets.predIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-8.png';
 assets.predAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-9.png';
+assets.elephantIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0.png';
+assets.elephantAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/imag69.png';
+assets.bossIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image70.png';
+assets.bossAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image71.png';
 
 const MAPS = [
     { n: "The Fuzzy Forest", m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:6.5,y:1.5,e:"BEAR"},{x:4.5,y:5.5,e:"SMALL"}], colors:["#FF80AB","#F48FB1"] },
     { n: "The Velvet Vaults", m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [{x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"}], colors:["#CE93D8","#BA68C8"] },
     { n: "The Velvet Gauntlet", m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"}], colors:["#9575CD","#7E57C2"] },
     { n: "Sugar Sanctuary", m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.5], enemies: [{x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true}], colors:["#F8BBD0","#F06292"], isSecret:true },
-    { n: "The Starry Summit", m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"🦄"}, colors:["#4FC3F7","#29B6F6"] }
+    { n: "The Starry Summit", m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"BOSS_FINAL"}, colors:["#4FC3F7","#29B6F6"] }
 ];
 
 let levelIdx = 0, player, sprites = [], projectiles = [], particles = [], keys = {}, zBuf = new Array(400);
@@ -339,10 +345,12 @@ function draw() {
         if (Math.abs(ang) < 0.8) {
             let sx = (ang + 0.5) * 400;
             if (zBuf[Math.floor(sx)] > dist) {
-                let sz = 300 / dist * (s.scale || 1); ctx.globalAlpha = s.l || 1.0; 
+                let sz = 300 / dist * (s.scale || (s.type === 'boss' ? 2.5 : 1)); ctx.globalAlpha = s.l || 1.0; 
                 if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
                 else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 150 - sz/2, sz, sz);
                 else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 150 - sz/2, sz, sz);
+                else if (s.e === "🐘") ctx.drawImage(s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle, sx - sz/2, 150 - sz/2, sz, sz);
+                else if (s.e === "BOSS_FINAL") ctx.drawImage(s.atkTimer > 0 ? assets.bossAtk : assets.bossIdle, sx - sz/2, 150 - sz/2, sz, sz);
                 else if (s.e === "🌀") { ctx.font = `${sz}px serif`; ctx.textAlign = "center"; ctx.fillText(s.e, sx, 150 + sz/2); }
                 else { ctx.font = `${sz}px serif`; ctx.textAlign = "center"; ctx.fillText(s.e || "✨", sx, 150 + sz/2); }
                 ctx.globalAlpha = 1.0;
