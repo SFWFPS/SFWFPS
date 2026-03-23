@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>SFWDOOM: Plushie Edition</title>
     <meta name="description" content="Enter the forest and start your Plushie Quest in this retro raycasting adventure!">
 
@@ -11,13 +13,11 @@
             --pink: #ff69b4; 
             --hot-pink: #ff1493; 
             --sky: #4fc3f7; 
-            --purple: #9575CD; 
-            --gold: #ffd700; 
-            --deep-bg: #1e121f;
         }
         
         html, body { 
             margin: 0; 
+            padding: 0;
             height: 100dvh;
             background: #1a1a1a; 
             overflow: hidden; 
@@ -26,6 +26,8 @@
             -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            display: flex;
+            flex-direction: column;
         }
         
         #start-menu { 
@@ -77,12 +79,12 @@
         .start-btn:active { transform: scale(0.92); }
 
         #viewport { 
+            flex: 1;
             position: relative; 
-            width: 100vw; 
-            height: 55dvh; 
             background: #000; 
             border-bottom: 4px solid var(--pink); 
             overflow: hidden; 
+            min-height: 0;
         }
         canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
         
@@ -121,15 +123,18 @@
         #player-face { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 
         #ui { 
-            height: calc(45dvh - 6px); 
+            flex-shrink: 0;
             background: radial-gradient(circle at 20px 20px, #2d1b2e 2px, transparent 0) 0 0 / 40px 40px, #1e121f; 
             display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; 
-            padding: 15px; box-sizing: border-box; border-top: 6px solid var(--hot-pink);
+            padding: 12px 15px;
+            padding-bottom: max(22px, env(safe-area-inset-bottom));
+            box-sizing: border-box; 
+            border-top: 6px solid var(--hot-pink);
         }
         
         #hud { 
             display: flex; flex-direction: column; align-items: center; 
-            background: rgba(0, 0, 0, 0.65); padding: 15px; border-radius: 15px; 
+            background: rgba(0, 0, 0, 0.65); padding: 12px; border-radius: 15px; 
             border: 3px solid var(--pink); width: 90%; max-width: 460px; 
             box-shadow: 0 0 20px var(--hot-pink); backdrop-filter: blur(6px);
         }
@@ -153,7 +158,7 @@
             max-width: 560px; 
             justify-content: space-between; 
             align-items: center; 
-            padding: 0 25px;
+            padding: 0 22px;
         }
 
         #joystick-container {
@@ -189,16 +194,19 @@
             box-shadow: 6px 6px 15px rgba(0,0,0,0.4), inset -3px -3px 8px rgba(0,0,0,0.3); 
             cursor: pointer; 
             transition: all 0.08s ease;
-            touch-action: none;
+            touch-action: manipulation;
         }
         .btn:active { transform: scale(0.92); box-shadow: 2px 2px 8px rgba(0,0,0,0.6); background: var(--hot-pink); }
         
         #btn-boop { 
             width: 110px; height: 110px; 
             background: radial-gradient(circle, var(--hot-pink), #a30b5d); 
-            border-radius: 50%; font-size: 15px; font-weight: bold; text-transform: uppercase;
-            border: 5px solid #fff; box-shadow: 0 0 25px var(--hot-pink);
-            touch-action: manipulation;
+            border-radius: 50%; 
+            font-size: 15px; 
+            font-weight: bold; 
+            text-transform: uppercase;
+            border: 5px solid #fff; 
+            box-shadow: 0 0 25px var(--hot-pink);
         }
 
         .overlay { 
@@ -217,30 +225,33 @@
         #share-btn { background: var(--sky); box-shadow: 0 0 20px var(--sky); }
         #retry-btn { background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink); }
 
-        /* LANDSCAPE OPTIMIZATION - prevents controls from being obscured */
+        /* === LANDSCAPE OPTIMIZATION - controls now guaranteed visible === */
         @media (orientation: landscape) {
-            #viewport {
-                height: 67dvh;
-            }
             #ui {
-                height: calc(33dvh - 6px);
-                padding: 10px 15px;
+                padding: 9px 15px;
+                padding-bottom: max(14px, env(safe-area-inset-bottom));
             }
             #joystick-container {
-                width: 150px;
-                height: 150px;
+                width: 135px;
+                height: 135px;
             }
             #joystick-knob {
-                width: 56px;
-                height: 56px;
+                width: 54px;
+                height: 54px;
             }
             #btn-boop {
-                width: 100px;
-                height: 100px;
-                font-size: 14px;
+                width: 94px;
+                height: 94px;
+                font-size: 13px;
             }
             #controls {
-                padding: 0 15px;
+                padding: 0 16px;
+            }
+            #hud {
+                padding: 10px;
+            }
+            #stats-bar {
+                font-size: 14px;
             }
         }
     </style>
@@ -414,6 +425,7 @@ boopBtn.addEventListener('pointerdown', e => { e.preventDefault(); doBoop(); });
 boopBtn.addEventListener('touchstart', e => { e.preventDefault(); doBoop(); }, { passive: false });
 
 // JOYSTICK
+let joyCenterX, joyCenterY;
 function setupJoystick() {
     joystickContainer.addEventListener('pointerdown', e => {
         if (joyPointerId !== null) return;
@@ -512,7 +524,6 @@ function spawnParticles(x, y, char, count) {
     }
 }
 
-// STRICT PROGRESSION: PORTAL ONLY AFTER ALL ENEMIES ARE DESTROYED
 function checkWin() {
     const enemiesRemaining = sprites.some(s => s.alive && !s.pickup && s.e !== "🌀");
     if (!enemiesRemaining) {
@@ -801,12 +812,9 @@ function drawMinimap() {
 
 function loop() { if(gameActive) { update(); draw(); } requestAnimationFrame(loop); }
 
-// MOBILE FIX: force dvh refresh on rotation (prevents any remaining layout shift)
-function handleResize() {
-    document.documentElement.style.height = '100dvh';
-}
-window.addEventListener('resize', handleResize);
-window.addEventListener('orientationchange', () => setTimeout(handleResize, 150));
+// MOBILE ROTATION FIX
+window.addEventListener('resize', () => { document.documentElement.style.height = '100dvh'; });
+window.addEventListener('orientationchange', () => { setTimeout(() => document.documentElement.style.height = '100dvh', 150); });
 </script>
 </body>
 </html>
