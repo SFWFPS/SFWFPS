@@ -249,13 +249,18 @@
         #share-btn { background: var(--sky); box-shadow: 0 0 20px var(--sky); }
         #retry-btn { background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink); }
 
-        /* Landscape tweaks for even bigger game area */
+        /* === LANDSCAPE: Boop button pushed ALL THE WAY to the right edge for perfect right-thumb access === */
         @media (orientation: landscape) {
             #top-hud-overlay { top: 8px; padding: 6px 12px; }
             #joystick-container { width: 138px; height: 138px; }
             #joystick-knob { width: 54px; height: 54px; }
             #btn-boop { width: 88px; height: 88px; font-size: 13px; }
             #bottom-controls-overlay { padding: 0 14px 6px; }
+            
+            /* Force controls to span full screen width so Boop sits at the extreme right */
+            #controls {
+                max-width: none;
+            }
         }
     </style>
 </head>
