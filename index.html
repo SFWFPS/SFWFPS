@@ -7,6 +7,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>SFWDOOM: Plushie Quest Pro</title>
     <meta name="description" content="Enter the forest and start your Plushie Quest in this optimized retro raycasting adventure!">
+    
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png">
 
     <style>
         :root { 
@@ -315,7 +318,7 @@
         #share-btn { background: var(--sky); box-shadow: 0 0 20px var(--sky); }
         #retry-btn, #resume-btn { background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink); }
 
-        /* FIX: Landscape Start Menu Optimization */
+        /* Landscape Start Menu Optimization */
         @media (orientation: landscape) and (max-height: 450px) {
             #start-menu { 
                 padding: 10px 20px; 
@@ -388,7 +391,7 @@
         <div id="minimap-container"><canvas id="m-canvas"></canvas></div>
         
         <div id="face-hud">
-            <img id="player-face" src="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/mainface.png" alt="Status">
+            <img id="player-face" src="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png" alt="Status">
         </div>
 
         <div id="boss-hud">
@@ -497,7 +500,7 @@ assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/head
 const MAPS = [
     { n: "The Fuzzy Forest", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:6.5,y:1.5,e:"BEAR"},{x:4.5,y:5.5,e:"SMALL"}] },
     { n: "The Velvet Vaults", tex: assets.wall2, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [{x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"}] },
-    { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"}] },
+    { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"}] },
     { n: "Sugar Sanctuary", tex: assets.wall2, m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.1], enemies: [{x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true}], isSecret:true },
     { n: "The Starry Summit", tex: assets.wall3, m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"BOSS_FINAL"} }
 ];
@@ -846,11 +849,19 @@ function update() {
     document.getElementById('combo-fill').style.width = player.combo + "%";
 
     const faceImg = document.getElementById('player-face');
-    const hpP = (player.hp / 15) * 100;
-    faceImg.src = hpP > 75 ? 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/mainface.png' :
-                  hpP > 50 ? 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/Gemini_Generated_Image_k7jgubk7jgubk7jg-Photoroom.png' :
-                  hpP > 25 ? 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/Gemini_Generated_Image_oo1o3too1o3too1o-Photoroom.png' :
-                               'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/Gemini_Generated_Image_zh1zaqzh1zaqzh1z-Photoroom.png';
+    const hpPct = (player.hp / 15) * 100;
+    let faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png';
+
+    if (hpPct <= 50) {
+        faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/50percenthealth.png';
+    } else {
+        if (keys['KeyD'] || joyTurn > 0.1) {
+            faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookright.png';
+        } else if (keys['KeyA'] || joyTurn < -0.1) {
+            faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookleft.png';
+        }
+    }
+    faceImg.src = faceUrl;
 
     const activeBoss = sprites.find(s => s.type === 'boss' && s.alive);
     const bossHud = document.getElementById('boss-hud');
