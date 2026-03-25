@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>SFWDOOM: Plushie Quest Pro</title>
+    <title>SFWFPS: Plushie Quest Pro</title>
     <meta name="description" content="Enter the forest and start your Plushie Quest in this optimized retro raycasting adventure!">
     
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png">
@@ -380,7 +380,7 @@
 <body>
     <div id="start-menu">
         <div class="logo-container">
-            <h1 class="logo-main">SFWDOOM</h1>
+            <h1 class="logo-main">SFWFPS</h1>
             <p class="logo-sub">Plushie Quest Pro</p>
         </div>
         
@@ -561,7 +561,7 @@ function toggleFullscreen() {
     const docEl = doc.documentElement;
     const vp = document.getElementById('viewport');
 
-    const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+    const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
     const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
 
     // Check if browser supports Fullscreen API (Desktop, Android, iPad)
@@ -838,14 +838,14 @@ function showEnd(msg) {
     const shareBtn = document.getElementById('share-btn');
     const isWin = msg.includes("VICTORY");
     overlay.style.borderColor = isWin ? "var(--sky)" : "var(--hot-pink)";
-    let highScore = parseInt(localStorage.getItem('sfwDoomHiScore') || '0');
+    let highScore = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
     let currentScore = Math.floor(player.score);
-    if (currentScore > highScore) { localStorage.setItem('sfwDoomHiScore', currentScore); highScore = currentScore; }
+    if (currentScore > highScore) { localStorage.setItem('sfwFpsHiScore', currentScore); highScore = currentScore; }
     overlay.style.display = 'flex';
     document.getElementById('status-msg').innerText = msg;
     document.getElementById('final-stats').innerHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
     shareBtn.onclick = () => {
-        const fullPost = `${isWin ? '🏆' : '🧸'} Score: ${currentScore} in SFWDOOM!\nhttps://sfwdoom.fun`;
+        const fullPost = `${isWin ? '🏆' : '🧸'} Score: ${currentScore} in SFWFPS!\nhttps://sfwdoom.fun`;
         navigator.clipboard.writeText(fullPost).then(() => {
             shareBtn.innerText = "Opening X... ✨";
             window.open(`https://x.com/intent/post?text=${encodeURIComponent(fullPost)}`, '_blank');
@@ -901,7 +901,7 @@ function update() {
 
     document.getElementById('hp-display').innerText = `❤️ x${Math.max(0, Math.floor(player.hp))}`;
     document.getElementById('score-display').innerText = `✨ ${Math.floor(player.score)}`;
-    document.getElementById('hi-display').innerText = `🏆 ${localStorage.getItem('sfwDoomHiScore') || 0}`;
+    document.getElementById('hi-display').innerText = `🏆 ${localStorage.getItem('sfwFpsHiScore') || 0}`;
     document.getElementById('mult-display').innerText = `x${player.mult}`;
     document.getElementById('combo-fill').style.width = player.combo + "%";
 
