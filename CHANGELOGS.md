@@ -4,7 +4,7 @@
 **Project:** Single-file HTML5 raycasting game — a wholesome “Plushie Edition” of DOOM. Fully playable at https://sfwdoom.fun.
 
 **March 24, 2026**
-- Gameplay: Added Boss health bars, difficulty selection, and "Fish Eye" effects.
+- Gameplay: Added Boss health bars, difficulty selection, second boss phase and "Fish Eye" effects.
 - Fixes: Improved portal animations and patched Sugar Sanctuary.
 - Mobile/UI: Implemented iOS fullscreen fallback, added Pause/Fullscreen buttons, and optimized the Landscape start menu.
 - Visuals: Updated player face assets and refined button styles.
