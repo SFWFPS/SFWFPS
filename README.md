@@ -1,6 +1,6 @@
 ## Plushie Quest 🪄💖
 
-Welcome to the softest, most wholesome demon-booping experience ever created. SFWDOOM: Plushie Edition reimagines the classic fast-paced action of the 90s through a lens of cotton candy, marshmallow clouds, and magical friendship.
+Welcome to the softest, most wholesome demon-booping experience ever created. Plushie Quest reimagines the classic fast-paced action of the 90s through a lens of cotton candy, marshmallow clouds, and magical friendship.
 
 # The Story
 You are the Plushie Protector. The Fuzzy Forest and its surrounding realms have been overrun by grumpy (but still very cute) entities. Armed with your Magic Sparkle Wand, you must journey through the clouds to boop the grumpiness away and restore peace to the Sugar Sanctuary.
