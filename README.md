@@ -1,4 +1,4 @@
-## Plushie Quest 🪄💖
+## SFWFPS: Plushie Quest 🪄💖
 
 Welcome to the softest, most wholesome demon-booping experience ever created. Plushie Quest reimagines the classic fast-paced action of 90s FPS games through a lens of cotton candy, marshmallow clouds, and magical friendship.
 
