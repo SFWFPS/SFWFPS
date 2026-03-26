@@ -351,8 +351,12 @@
             z-index: 100; color: white; flex-direction: column; align-items: center; justify-content: center; 
             text-align: center; backdrop-filter: blur(12px);
             border: 6px solid var(--hot-pink); box-shadow: inset 0 0 60px rgba(255, 20, 147, 0.4);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        .overlay-btns { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; }
+        .overlay-btns { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; margin-bottom: 20px; }
         .overlay-btns button { 
             padding: 16px 50px; border: 3px solid #fff; border-radius: 50px; 
             color: white; font-weight: bold; cursor: pointer; text-transform: uppercase; 
@@ -381,11 +385,13 @@
 
         @media (orientation: landscape) and (max-height: 450px) {
             #start-menu { 
-                padding: 10px 20px; 
                 flex-direction: row; 
                 justify-content: space-evenly; 
                 align-items: center;
-                overflow: hidden;
+            }
+            .overlay {
+                justify-content: flex-start;
+                padding-top: 40px;
             }
             .logo-container { margin-bottom: 0; flex: 1; }
             .logo-main { font-size: 38px; }
@@ -530,6 +536,11 @@ canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80
 let audioCtx;
 let paused = false;
 
+// Optimization: Cache Gradients
+let cachedSkyGrad = null;
+let cachedSkyLevel = -1;
+let cachedFloorGrad = null;
+
 function playSound(type = 'sine', freq = 440, duration = 200, vol = 0.25, sweep = 0) {
     if (!audioCtx || paused) return;
     const osc = audioCtx.createOscillator();
@@ -594,7 +605,6 @@ function showScoresMenu() {
 function hideScoresMenu() {
     document.getElementById('scores-menu').style.display = 'none';
 }
-
 
 const assets = {
     bearIdle: new Image(), bearAtk: new Image(),
@@ -855,7 +865,7 @@ function doDodge() {
     
     for(let i=0; i<8; i++) {
         let ang = moveDir + Math.PI + (Math.random()-0.5); 
-        particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.1, vy: Math.sin(ang)*0.1, l: 0.8, c: "💨", scale: 0.5, isParticle: true});
+        particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.1, vy: Math.sin(ang)*0.1, l: 0.8, e: "💨", scale: 0.5, isParticle: true});
     }
 }
 
@@ -942,20 +952,20 @@ function doBoop() {
     if (currentToy === "🎵") {
         for(let i=0; i<24; i++) {
             let ang = (i / 24) * Math.PI * 2;
-            particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.25, vy: Math.sin(ang)*0.25, l: 1.0, c: "🎶", scale: 0.6, isParticle: true});
+            particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.25, vy: Math.sin(ang)*0.25, l: 1.0, e: "🎶", scale: 0.6, isParticle: true});
         }
     } else if (currentToy === "🛏️") {
         for(let i=0; i<15; i++) {
             let ang = (player.dir - 0.6) + Math.random() * 1.2;
-            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.2, vy: Math.sin(ang)*0.2, l: 0.8, c: "🪶", scale: 0.4, isParticle: true});
+            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.2, vy: Math.sin(ang)*0.2, l: 0.8, e: "🪶", scale: 0.4, isParticle: true});
         }
     } else if (currentToy === "🍼") {
         let ang = player.dir + (Math.random()-0.5)*0.1;
-        particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.3, vy: Math.sin(ang)*0.3, l: 1.0, c: "💧", scale: 0.3, isParticle: true});
+        particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.3, vy: Math.sin(ang)*0.3, l: 1.0, e: "💧", scale: 0.3, isParticle: true});
     } else {
         for(let i=0; i<8; i++) {
             let ang = (player.dir - 0.2) + Math.random() * 0.4;
-            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.18, vy: Math.sin(ang)*0.18, l: 0.85, c: "🌸", scale: 0.32, isParticle: true});
+            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.18, vy: Math.sin(ang)*0.18, l: 0.85, e: "🌸", scale: 0.32, isParticle: true});
         }
     }
 
@@ -980,7 +990,9 @@ function doBoop() {
         let stepX = dirX < 0 ? -1 : 1; let stepY = dirY < 0 ? -1 : 1;
         let sideDistX = dirX < 0 ? (player.x - mapX) * deltaDistX : (mapX + 1.0 - player.x) * deltaDistX;
         let sideDistY = dirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1.0 - player.y) * deltaDistY;
+        
         let wallDist = 9999; let steps = 0; let side = 0;
+        // ANTI-FREEZE: strict limit of 60 steps for raycast checks
         while (steps < 60) {
             steps++;
             if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
@@ -1032,7 +1044,7 @@ function doBoop() {
 
 function spawnParticles(x, y, char, count) {
     for(let i=0; i<count; i++) {
-        particles.push({ x, y, vx:(Math.random()-0.5)*0.12, vy:(Math.random()-0.5)*0.12, l: 1.05, c: char, isParticle: true });
+        particles.push({ x, y, vx:(Math.random()-0.5)*0.12, vy:(Math.random()-0.5)*0.12, l: 1.05, e: char, isParticle: true });
     }
 }
 
@@ -1271,7 +1283,8 @@ function update() {
                 let sy = s.y + (s.strafeDir * 0.038); if (canMove(s.x, sy)) s.y = sy;
                 if (d < 12 && Date.now() - s.lastShot > 1900) {
                     let a = Math.atan2(player.y-s.y, player.x-s.x);
-                    projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.095, vy:Math.sin(a)*0.095, l:150});
+                    
+                    projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.095, vy:Math.sin(a)*0.095, l:150, e:"💗", scale:0.65, isProj: true});
                     s.lastShot = Date.now(); s.atkTimer = 480;
                 }
             }
@@ -1297,12 +1310,13 @@ function update() {
 
             if (d < 8 && Date.now() - s.lastShot > 3900) {
                 let a = Math.atan2(player.y-s.y, player.x-s.x);
-                projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150});
+                projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150, e:"💗", scale:0.65, isProj: true});
                 s.lastShot = Date.now(); s.atkTimer = 480;
             }
         }
     });
 
+    // ANTI-FREEZE: Safe reverse loop for array splicing during update
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         let removed = false;
@@ -1330,17 +1344,25 @@ function update() {
         if (removed || p.l <= 0) projectiles.splice(i, 1);
     }
 
-    particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.l -= 0.035; if (p.l <= 0) particles.splice(i, 1); });
+    // ANTI-FREEZE: Safe reverse loop for array splicing during update
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.l -= 0.035; 
+        if (p.l <= 0) particles.splice(i, 1);
+    }
 }
 
 function updatePortalTexture() {
+    // ANTI-FREEZE: Ensure image is fully loaded with valid dimensions before parsing
+    if (!assets.portal.complete || assets.portal.naturalWidth === 0) return;
+    
     let t = Date.now() * 0.002; let c = 128; pCtx.fillStyle = "#0a0515"; pCtx.fillRect(0, 0, 256, 256);
     let pulse = 1 + Math.sin(t * 2) * 0.08;
     let rg = pCtx.createRadialGradient(c, c, 0, c, c, 128 * pulse);
     rg.addColorStop(0, "rgba(255, 255, 255, 0.9)"); rg.addColorStop(0.4, "rgba(79, 195, 247, 0.8)");
     rg.addColorStop(0.7, "rgba(255, 20, 147, 0.5)"); rg.addColorStop(1, "rgba(0, 0, 0, 0)");
     pCtx.fillStyle = rg; pCtx.fillRect(0, 0, 256, 256);
-    if (assets.portal.complete) { let imgSize = 230 * pulse; pCtx.drawImage(assets.portal, c - imgSize/2, c - imgSize/2, imgSize, imgSize); }
+    let imgSize = 230 * pulse; pCtx.drawImage(assets.portal, c - imgSize/2, c - imgSize/2, imgSize, imgSize);
 }
 
 function draw() {
@@ -1350,20 +1372,31 @@ function draw() {
     ctx.translate(0, currentBob);
     if (shake > 0) ctx.translate((Math.random()-0.5)*22*shake, (Math.random()-0.5)*22*shake);
 
-    const skyGrad = ctx.createLinearGradient(0, -100, 0, 160);
-    skyGrad.addColorStop(0, levelIdx === 4 ? '#0a0825' : '#87CEEB'); skyGrad.addColorStop(1, '#221122');
-    ctx.fillStyle = skyGrad; ctx.fillRect(0, -100, 400, 260);
-    const floorGrad = ctx.createLinearGradient(0, 150, 0, 350);
-    floorGrad.addColorStop(0, '#111'); floorGrad.addColorStop(1, '#000');
-    ctx.fillStyle = floorGrad; ctx.fillRect(0, 150, 400, 200);
+    if (!cachedFloorGrad) {
+        cachedFloorGrad = ctx.createLinearGradient(0, 150, 0, 350);
+        cachedFloorGrad.addColorStop(0, '#111'); cachedFloorGrad.addColorStop(1, '#000');
+    }
+    if (cachedSkyLevel !== levelIdx) {
+        cachedSkyGrad = ctx.createLinearGradient(0, -100, 0, 160);
+        cachedSkyGrad.addColorStop(0, levelIdx === 4 ? '#0a0825' : '#87CEEB'); cachedSkyGrad.addColorStop(1, '#221122');
+        cachedSkyLevel = levelIdx;
+    }
+
+    ctx.fillStyle = cachedSkyGrad; ctx.fillRect(0, -100, 400, 260);
+    ctx.fillStyle = cachedFloorGrad; ctx.fillRect(0, 150, 400, 200);
 
     const map = MAPS[levelIdx].m; const tex = MAPS[levelIdx].tex;
 
     const FOV = 0.66;
+    const cosDir = Math.cos(player.dir);
+    const sinDir = Math.sin(player.dir);
+    const cosDir90 = Math.cos(player.dir + Math.PI/2);
+    const sinDir90 = Math.sin(player.dir + Math.PI/2);
+
     for (let i = 0; i < 400; i++) {
         let cameraX = 2 * i / 400 - 1;
-        let rayDirX = Math.cos(player.dir) + Math.cos(player.dir + Math.PI/2) * cameraX * FOV;
-        let rayDirY = Math.sin(player.dir) + Math.sin(player.dir + Math.PI/2) * cameraX * FOV;
+        let rayDirX = cosDir + cosDir90 * cameraX * FOV;
+        let rayDirY = sinDir + sinDir90 * cameraX * FOV;
 
         let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
         let deltaDistX = Math.abs(1 / rayDirX), deltaDistY = Math.abs(1 / rayDirY);
@@ -1374,7 +1407,10 @@ function draw() {
         if (rayDirY < 0) { stepY = -1; sideDistY = (player.y - mapY) * deltaDistY; } 
         else { stepY = 1; sideDistY = (mapY + 1.0 - player.y) * deltaDistY; }
 
-        while (hit === 0) {
+        let steps = 0;
+        // ANTI-FREEZE: Hard cap raycast loop at 100 steps to prevent infinite loop out of bounds
+        while (hit === 0 && steps < 100) {
+            steps++;
             if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
             else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
             if (map[mapY] && map[mapY][mapX] > 0) hit = map[mapY][mapX];
@@ -1394,11 +1430,7 @@ function draw() {
         ctx.globalAlpha = 1;
     }
 
-    let itms = [
-        ...sprites.filter(s=>s.alive), 
-        ...projectiles.map(p=>({x:p.x, y:p.y, e:"💗", scale:0.65})), 
-        ...particles.map(p=>({x:p.x, y:p.y, e:p.c, scale:(p.scale||0.4), l:p.l, isParticle: true}))
-    ];
+    let itms = sprites.filter(s=>s.alive).concat(projectiles).concat(particles);
     
     itms.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2)).forEach(s => {
         let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
@@ -1430,17 +1462,15 @@ function draw() {
                     ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 150 - sz/2, sz, sz);
                 }
                 else { 
-                    if (!s.isParticle) {
-                        ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-                        ctx.shadowBlur = Math.max(4, sz * 0.15);
+                    if (!s.isParticle && !s.isProj) {
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+                        ctx.beginPath();
+                        ctx.ellipse(sx, 150 + sz/2 - sz*0.05, sz*0.3, sz*0.08, 0, 0, Math.PI*2);
+                        ctx.fill();
                     }
                     ctx.font = `${sz}px serif`; 
                     ctx.textAlign = "center"; 
                     ctx.fillText(s.e || "✨", sx, 150 + sz/2); 
-                    if (!s.isParticle) {
-                        ctx.shadowBlur = 0;
-                        ctx.shadowColor = "transparent";
-                    }
                 }
                 ctx.globalAlpha = 1;
             }
