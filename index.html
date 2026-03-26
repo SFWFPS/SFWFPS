@@ -438,14 +438,14 @@
                 Naptime<br>
                 <small>Hard • 3 damage • 2.0× health • 3× enemies</small>
             </button>
-            
+
             <button onclick="showScoresMenu()" class="diff-btn" style="background: #2d1b2e; border: 2px solid var(--sky); margin-top: 15px;">
                 High Scores 🏆
             </button>
         </div>
     </div>
 
-    <div id="scores-menu" class="overlay">
+    <div id="scores-menu" class="overlay" style="z-index: 250 !important;">
         <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">TOP 10 SLEEPERS</h1>
         <div id="scores-list"></div>
         <div class="overlay-btns">
@@ -549,7 +549,7 @@ function playSound(type = 'sine', freq = 440, duration = 200, vol = 0.25, sweep 
     osc.stop(now + duration / 1000 + 0.03);
 }
 
-// --- SCOREBOARD SYSTEM ---
+// --- SCOREBOARD SYSTEM FUNCTIONS ---
 function getTopScores() {
     let scores = localStorage.getItem('sfwFpsTopScores');
     return scores ? JSON.parse(scores) : [];
@@ -560,7 +560,6 @@ function saveScore(newScore) {
     if (newScore <= 0) return false;
     let scores = getTopScores();
     
-    // Check if new score makes the top 10
     if (scores.length < 10 || newScore > scores[scores.length - 1].score) {
         let initials = prompt("New High Score! Enter your initials (max 3):", "AAA");
         if (!initials) initials = "???";
@@ -568,10 +567,10 @@ function saveScore(newScore) {
         
         scores.push({ name: initials, score: newScore });
         scores.sort((a, b) => b.score - a.score);
-        scores = scores.slice(0, 10); // Keep only top 10
+        scores = scores.slice(0, 10);
         
         localStorage.setItem('sfwFpsTopScores', JSON.stringify(scores));
-        localStorage.setItem('sfwFpsHiScore', scores[0].score); // Sync absolute best for the HUD
+        localStorage.setItem('sfwFpsHiScore', scores[0].score); 
         return true;
     }
     return false;
@@ -926,26 +925,6 @@ document.addEventListener('pointermove', e => {
 });
 document.addEventListener('pointerup', e => { if (turnPointerId === e.pointerId) { turnActive = false; turnPointerId = null; } });
 
-function raycastWallDistance(dirX, dirY) {
-    const map = MAPS[levelIdx].m;
-    let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
-    const deltaDistX = dirX === 0 ? 999999 : Math.abs(1 / dirX);
-    const deltaDistY = dirY === 0 ? 999999 : Math.abs(1 / dirY);
-    let stepX = dirX < 0 ? -1 : 1; let stepY = dirY < 0 ? -1 : 1;
-    let sideDistX = dirX < 0 ? (player.x - mapX) * deltaDistX : (mapX + 1.0 - player.x) * deltaDistX;
-    let sideDistY = dirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1.0 - player.y) * deltaDistY;
-    let perpWallDist = 9999; let steps = 0; let side = 0;
-    while (steps < 60) {
-        steps++;
-        if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
-        else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
-        if (map[mapY] && map[mapY][mapX] > 0) {
-            perpWallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY; break;
-        }
-    }
-    return perpWallDist;
-}
-
 function doBoop() {
     if (!gameActive || isLoading || paused) return;
     
@@ -993,7 +972,24 @@ function doBoop() {
 
         let dirX = (s.x - player.x) / d;
         let dirY = (s.y - player.y) / d;
-        let wallDist = raycastWallDistance(dirX, dirY);
+        
+        const map = MAPS[levelIdx].m;
+        let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
+        const deltaDistX = dirX === 0 ? 999999 : Math.abs(1 / dirX);
+        const deltaDistY = dirY === 0 ? 999999 : Math.abs(1 / dirY);
+        let stepX = dirX < 0 ? -1 : 1; let stepY = dirY < 0 ? -1 : 1;
+        let sideDistX = dirX < 0 ? (player.x - mapX) * deltaDistX : (mapX + 1.0 - player.x) * deltaDistX;
+        let sideDistY = dirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1.0 - player.y) * deltaDistY;
+        let wallDist = 9999; let steps = 0; let side = 0;
+        while (steps < 60) {
+            steps++;
+            if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
+            else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+            if (map[mapY] && map[mapY][mapX] > 0) {
+                wallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY; break;
+            }
+        }
+        
         if (wallDist < d - 0.4) return;
 
         s.hp -= toy.dmg;
