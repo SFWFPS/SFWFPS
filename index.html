@@ -238,6 +238,7 @@
             opacity: 0.72;
             pointer-events: none;
             box-sizing: border-box;
+            transition: opacity 0.3s;
         }
         #bottom-controls-overlay > * { pointer-events: auto; }
 
@@ -533,7 +534,7 @@ const pCtx = pCanvas.getContext('2d');
 canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80;
 
 // === ELEGANT FPS OPTIMIZATIONS START HERE ===
-let displayList = [];                     // reused array – no more filter+concat+new array every frame
+let displayList = [];                     
 let lastHP = -1;
 let lastScoreText = '';
 let lastHi = -1;
@@ -543,12 +544,29 @@ let lastFaceUrl = '';
 let lastIsDodging = false;
 let lastVignetteOpacity = -1;
 
-// Offscreen static minimap background (redrawn ONLY when map actually changes)
+// Offscreen static minimap background
 let miniBgCanvas = document.createElement('canvas');
 miniBgCanvas.width = 80;
 miniBgCanvas.height = 80;
 let miniBgCtx = miniBgCanvas.getContext('2d');
 let minimapStaticDirty = true;
+
+// GAMEPAD STATE VARIABLES
+let lastGamepadSwap = false;
+let lastGamepadPause = false;
+let gamepadConnected = false;
+
+// GAMEPAD EVENT LISTENERS (Hides touch UI automatically)
+window.addEventListener("gamepadconnected", (e) => {
+    gamepadConnected = true;
+    document.getElementById('bottom-controls-overlay').style.display = 'none';
+    console.log("Gamepad connected:", e.gamepad.id);
+});
+window.addEventListener("gamepaddisconnected", (e) => {
+    gamepadConnected = false;
+    document.getElementById('bottom-controls-overlay').style.display = 'flex';
+    console.log("Gamepad disconnected:", e.gamepad.id);
+});
 
 function redrawMinimapStatic() {
     const map = MAPS[levelIdx].m;
@@ -875,7 +893,7 @@ function loadLevel(idx) {
     }
     
     projectiles = []; particles = [];
-    minimapStaticDirty = true;               // force static minimap redraw on level load
+    minimapStaticDirty = true;               
     showLevelCard(l.n, l.isSecret ? "SECRET FOUND!" : "LEVEL " + (idx + 1));
     setTimeout(() => { isLoading = false; levelTransitioning = false; }, 500);
 }
@@ -1133,7 +1151,7 @@ function checkWin() {
             const tx = Math.floor(exitX), ty = Math.floor(exitY);
             if (map[ty] && map[ty][tx] !== undefined) {
                 map[ty][tx] = 9;
-                minimapStaticDirty = true;   // portal appeared → static minimap must update
+                minimapStaticDirty = true;   
             }
             portalActive = true; 
             playSound('sine', 880, 120, 0.32);
@@ -1191,6 +1209,32 @@ document.getElementById('retry-btn').onclick = returnToMenu;
 
 function update() {
     if (!gameActive || isLoading || paused) return;
+
+    // === GAMEPAD POLLING START ===
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = gamepads[0];
+    let gpMoveY = 0, gpTurnX = 0, gpSprint = false;
+
+    if (gp) {
+        const deadzone = 0.15;
+        if (Math.abs(gp.axes[1]) > deadzone) gpMoveY = gp.axes[1]; // Left Stick Y
+        if (Math.abs(gp.axes[2]) > deadzone) gpTurnX = gp.axes[2]; // Right Stick X
+        else if (Math.abs(gp.axes[0]) > deadzone) gpTurnX = gp.axes[0]; // Fallback to Left Stick X
+        
+        if (gp.buttons[10]?.pressed || gp.buttons[6]?.pressed) gpSprint = true; // L3 or LT
+        
+        if (gp.buttons[7]?.pressed || gp.buttons[0]?.pressed) doBoop(); // RT or A
+        if (gp.buttons[1]?.pressed) doDodge(); // B
+        
+        if ((gp.buttons[3]?.pressed || gp.buttons[4]?.pressed || gp.buttons[5]?.pressed) && !lastGamepadSwap) {
+            swapWeapon();
+            lastGamepadSwap = true;
+        } else if (!gp.buttons[3]?.pressed && !gp.buttons[4]?.pressed && !gp.buttons[5]?.pressed) {
+            lastGamepadSwap = false;
+        }
+    }
+    // === GAMEPAD POLLING END ===
+
     if (attackAnim > 0) attackAnim -= 0.12;
     if (shake > 0) shake -= 0.12;
 
@@ -1217,11 +1261,11 @@ function update() {
         dodgeBtn.style.filter = "none";
     }
 
-    // Turning is always active
     let rotSpeed = 0.075;
     if (keys['KeyA']) player.dir -= rotSpeed;
     if (keys['KeyD']) player.dir += rotSpeed;
     if (joyActive) player.dir += joyTurn * 0.085;
+    if (gpTurnX !== 0) player.dir += gpTurnX * 0.085; // Steam Deck turning
 
     isMoving = false;
 
@@ -1234,11 +1278,11 @@ function update() {
     } else {
         isDodging = false;
         
-        let isSprinting = keys['ShiftLeft'];
+        let isSprinting = keys['ShiftLeft'] || gpSprint;
         let joyDist = joyActive ? Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS : 0;
         if (joyDist > 0.68) isSprinting = true;
+        if (Math.abs(gpMoveY) > 0.68) isSprinting = true; // Steam Deck sprint threshold
         
-        // PLAYER SPEED INCREASED (was 0.038 / 0.085)
         let moveSpeed = isSprinting ? 0.095 : 0.092;
         
         let dx = Math.cos(player.dir) * moveSpeed; let dy = Math.sin(player.dir) * moveSpeed;
@@ -1254,11 +1298,18 @@ function update() {
                 isMoving = true;
             }
         }
+
+        if (gpMoveY !== 0) {
+            let fwdDx = Math.cos(player.dir) * (gpMoveY * -moveSpeed);
+            let fwdDy = Math.sin(player.dir) * (gpMoveY * -moveSpeed);
+            if (canMove(player.x + fwdDx, player.y)) { player.x += fwdDx; isMoving = true; }
+            if (canMove(player.x, player.y + fwdDy)) { player.y += fwdDy; isMoving = true; }
+        }
     }
 
-    if (isMoving) bob += (keys['ShiftLeft'] || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
+    if (isMoving) bob += (keys['ShiftLeft'] || gpSprint || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
     
-    // === OPTIMIZED VIGNETTE (background only updated on state change) ===
+    // === OPTIMIZED VIGNETTE ===
     if (isDodging !== lastIsDodging) {
         vignette.style.background = isDodging 
             ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" 
@@ -1276,7 +1327,7 @@ function update() {
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
     if (player.combo > highestCombo) highestCombo = player.combo;
 
-    // === OPTIMIZED HUD (dirty-check only changed values) ===
+    // === OPTIMIZED HUD ===
     const currentHP = Math.max(0, Math.floor(player.hp));
     if (currentHP !== lastHP) {
         document.getElementById('hp-display').innerText = `❤️ x${currentHP}`;
@@ -1307,15 +1358,15 @@ function update() {
         lastCombo = player.combo;
     }
 
-    // === OPTIMIZED PLAYER FACE (only change src when it actually changes) ===
+    // === OPTIMIZED PLAYER FACE ===
     const hpPct = (player.hp / 15) * 100;
     let faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png';
     if (hpPct <= 50) {
         faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/50percenthealth.png';
     } else {
-        if (keys['KeyD'] || joyTurn > 0.1) {
+        if (keys['KeyD'] || joyTurn > 0.1 || gpTurnX > 0.1) {
             faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookright.png';
-        } else if (keys['KeyA'] || joyTurn < -0.1) {
+        } else if (keys['KeyA'] || joyTurn < -0.1 || gpTurnX < -0.1) {
             faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookleft.png';
         }
     }
@@ -1537,7 +1588,6 @@ function draw() {
         ctx.globalAlpha = 1;
     }
 
-    // === OPTIMIZED SPRITE RENDERING (reused displayList, no filter/concat) ===
     displayList.length = 0;
     for (let s of sprites) if (s.alive) displayList.push(s);
     for (let p of projectiles) displayList.push(p);
@@ -1594,7 +1644,6 @@ function draw() {
 
     ctx.restore(); 
     
-    // Wand / ammo (unchanged)
     ctx.save();
     let wandSway = Math.cos(bob * 0.5) * 16; 
     let wandAtkY = 0;
@@ -1638,14 +1687,12 @@ function draw() {
 function drawMinimap() {
     mCtx.clearRect(0, 0, 80, 80);
     
-    // Blit pre-rendered static map (only redrawn when portal appears or level changes)
     if (minimapStaticDirty) {
         redrawMinimapStatic();
         minimapStaticDirty = false;
     }
     mCtx.drawImage(miniBgCanvas, 0, 0);
 
-    // Dynamic elements only (player + enemies/pickups)
     const map = MAPS[levelIdx].m;
     const cw = 80 / map[0].length;
     const ch = 80 / map.length;
@@ -1665,7 +1712,24 @@ function drawMinimap() {
     mCtx.fill();
 }
 
-function loop() { if (gameActive && !paused) { update(); draw(); } requestAnimationFrame(loop); }
+function loop() { 
+    // Always poll for the Start/Menu button so we can unpause
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = gamepads[0];
+    if (gp) {
+        let currentPause = gp.buttons[9]?.pressed; 
+        if (currentPause && !lastGamepadPause) {
+            if (gameActive && !isLoading) togglePause();
+        }
+        lastGamepadPause = currentPause;
+    }
+
+    if (gameActive && !paused) { 
+        update(); 
+        draw(); 
+    } 
+    requestAnimationFrame(loop); 
+}
 loop();
 
 window.addEventListener('resize', () => { document.documentElement.style.height = '100dvh'; });
