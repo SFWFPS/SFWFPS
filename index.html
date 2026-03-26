@@ -109,6 +109,14 @@
             margin-top: 4px;
         }
 
+        /* NEW: Controller selection highlight */
+        .diff-btn.selected {
+            outline: 6px solid var(--sky) !important;
+            box-shadow: 0 0 40px var(--sky), 0 12px #a30b5d !important;
+            transform: scale(1.15) !important;
+            animation: pulse 0.9s infinite !important;
+        }
+
         #viewport { 
             flex: 1;
             position: relative; 
@@ -387,17 +395,17 @@
         <div id="difficulty-container" style="text-align:center; margin-bottom: 30px; width: 100%; max-width: 340px;">
             <h2 style="color:#ff69b4; margin: 0 0 20px 0; font-size: 22px; text-shadow: 0 0 15px var(--hot-pink);">CHOOSE YOUR SLEEPINESS LEVEL</h2>
             
-            <button onclick="selectDifficulty(1.0)" class="diff-btn">
+            <button onclick="selectDifficulty(1.0)" class="diff-btn" id="diff-0">
                 I'm Not Even Tired<br>
                 <small>Easy • 1 damage • 1.0× health • 1× enemies</small>
             </button>
             
-            <button onclick="selectDifficulty(1.5)" class="diff-btn" style="background: var(--hot-pink); animation: pulse 1.8s infinite;">
+            <button onclick="selectDifficulty(1.5)" class="diff-btn" id="diff-1" style="background: var(--hot-pink); animation: pulse 1.8s infinite;">
                 A Little Eepy<br>
                 <small>Normal • 2 damage • 1.5× health • 2× enemies</small>
             </button>
             
-            <button onclick="selectDifficulty(2.0)" class="diff-btn" style="background: #9c1f5f;">
+            <button onclick="selectDifficulty(2.0)" class="diff-btn" id="diff-2" style="background: #9c1f5f;">
                 Naptime<br>
                 <small>Hard • 3 damage • 2.0× health • 3× enemies</small>
             </button>
@@ -541,6 +549,14 @@ const joystickContainer = document.getElementById('joystick-container');
 const joystickKnob = document.getElementById('joystick-knob');
 let joyPointerId = null;
 
+// NEW: Controller / D-pad support variables
+let selectedDifficulty = 1;
+let gamepadForward = 0;
+let gamepadTurn = 0;
+let gamepadIsSprinting = false;
+let prevGamepadButtons = [];
+let prevGamepadAxes = [];
+
 let turnActive = false, lastTurnClientX = 0, turnPointerId = null;
 const viewportEl = document.getElementById('viewport');
 
@@ -564,7 +580,6 @@ function toggleFullscreen() {
     const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
     const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
 
-    // Check if browser supports Fullscreen API (Desktop, Android, iPad)
     if (requestFullScreen) {
         if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
             requestFullScreen.call(docEl).catch(err => {
@@ -576,7 +591,6 @@ function toggleFullscreen() {
             vp.classList.remove('ios-fullscreen-fix');
         }
     } else {
-        // Fallback for iPhone/iOS Safari
         applyiOSFullscreenFallback(vp);
     }
 }
@@ -586,12 +600,10 @@ function applyiOSFullscreenFallback(el) {
         el.classList.remove('ios-fullscreen-fix');
     } else {
         el.classList.add('ios-fullscreen-fix');
-        // iOS Safari address bar fix: scroll to top to hide UI
         window.scrollTo(0, 0);
     }
 }
 
-// Fullscreen fix for touch devices - Using pointerdown + passive:false for immediate iOS response
 const fsBtn = document.getElementById('fullscreen-toggle');
 fsBtn.addEventListener('pointerdown', e => {
     e.preventDefault();
@@ -614,6 +626,9 @@ function returnToMenu() {
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
     document.getElementById('start-menu').style.display = 'flex';
+    // NEW: Reset menu selection for controller
+    selectedDifficulty = 1;
+    updateMenuSelection();
 }
 
 function initGame() {
@@ -772,6 +787,105 @@ document.addEventListener('pointermove', e => {
 });
 document.addEventListener('pointerup', e => { if (turnPointerId === e.pointerId) { turnActive = false; turnPointerId = null; } });
 
+// NEW: Menu selection highlight for controller
+function updateMenuSelection() {
+    const container = document.getElementById('difficulty-container');
+    if (!container) return;
+    const buttons = container.querySelectorAll('.diff-btn');
+    buttons.forEach((btn, index) => {
+        btn.classList.toggle('selected', index === selectedDifficulty);
+    });
+}
+
+// NEW: Full Gamepad / D-pad support (Steam Deck + any standard controller)
+function handleGamepad() {
+    if (!navigator.getGamepads) return;
+
+    const pads = navigator.getGamepads();
+    let gp = null;
+    for (let i = 0; i < pads.length; i++) {
+        if (pads[i] && pads[i].connected) {
+            gp = pads[i];
+            break;
+        }
+    }
+    if (!gp) {
+        gamepadForward = 0;
+        gamepadTurn = 0;
+        gamepadIsSprinting = false;
+        return;
+    }
+
+    const currentButtons = gp.buttons.map(b => b.pressed);
+    const currentAxes = [...gp.axes];
+
+    // MENU (D-pad navigation + A/X confirm)
+    const startMenu = document.getElementById('start-menu');
+    const menuVisible = startMenu && startMenu.style.display !== 'none';
+    if (menuVisible) {
+        const dpadUp = currentButtons[12] && !(prevGamepadButtons[12] ?? false);
+        const dpadDown = currentButtons[13] && !(prevGamepadButtons[13] ?? false);
+
+        if (dpadUp) {
+            selectedDifficulty = Math.max(0, selectedDifficulty - 1);
+            updateMenuSelection();
+            playSound('sine', 880, 60, 0.2);
+        }
+        if (dpadDown) {
+            selectedDifficulty = Math.min(2, selectedDifficulty + 1);
+            updateMenuSelection();
+            playSound('sine', 880, 60, 0.2);
+        }
+
+        const confirmPressed = currentButtons[0] && !(prevGamepadButtons[0] ?? false);
+        if (confirmPressed) {
+            const mults = [1.0, 1.5, 2.0];
+            selectDifficulty(mults[selectedDifficulty]);
+        }
+    }
+
+    // IN-GAME CONTROLS
+    if (gameActive && !paused && !isLoading && !levelTransitioning) {
+        const deadzone = 0.2;
+
+        gamepadTurn = (Math.abs(currentAxes[0]) > deadzone) ? currentAxes[0] : 0;
+        gamepadForward = (Math.abs(currentAxes[1]) > deadzone) ? -currentAxes[1] : 0;
+        gamepadIsSprinting = false;
+
+        // D-pad fallback (works on all controllers)
+        if (currentButtons[12]) gamepadForward = Math.max(gamepadForward, 1);
+        if (currentButtons[13]) gamepadForward = Math.min(gamepadForward, -1);
+        if (currentButtons[14]) gamepadTurn = Math.min(gamepadTurn, -1);
+        if (currentButtons[15]) gamepadTurn = Math.max(gamepadTurn, 1);
+
+        // Sprint (RB or RT)
+        if (currentButtons[5] || (gp.buttons[7] && gp.buttons[7].value > 0.3)) {
+            gamepadIsSprinting = true;
+        }
+
+        // BOOP! (A/X button)
+        const boopPressed = currentButtons[0] && !(prevGamepadButtons[0] ?? false);
+        if (boopPressed) {
+            doBoop();
+        }
+
+        // Pause (Start button)
+        const startPressed = currentButtons[9] && !(prevGamepadButtons[9] ?? false);
+        if (startPressed) {
+            togglePause();
+        }
+    } else {
+        // Reset inputs when not playing
+        gamepadForward = 0;
+        gamepadTurn = 0;
+        gamepadIsSprinting = false;
+    }
+
+    // Save state for next frame (edge detection)
+    prevGamepadButtons = currentButtons;
+    prevGamepadAxes = currentAxes;
+}
+
 function doBoop() {
     if (!gameActive || isLoading || paused) return;
     attackAnim = 1.0;
@@ -860,13 +974,12 @@ function update() {
     if (attackAnim > 0) attackAnim -= 0.12;
     if (shake > 0) shake -= 0.12;
 
-    let isSprinting = keys['ShiftLeft'];
+    let isSprinting = keys['ShiftLeft'] || (joyActive && (Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) || gamepadIsSprinting;
     let rotSpeed = 0.045;
     if (keys['KeyA']) player.dir -= rotSpeed;
     if (keys['KeyD']) player.dir += rotSpeed;
 
     let joyDist = joyActive ? Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS : 0;
-    if (joyDist > 0.68) isSprinting = true;
     let moveSpeed = isSprinting ? 0.085 : 0.038;
     const map = MAPS[levelIdx].m;
 
@@ -890,6 +1003,18 @@ function update() {
             if (canMove(player.x + fwdDx, player.y)) player.x += fwdDx;
             if (canMove(player.x, player.y + fwdDy)) player.y += fwdDy;
             isMoving = true;
+        }
+    }
+
+    // NEW: Gamepad stick / D-pad movement (works together with keyboard + touch)
+    if (Math.abs(gamepadTurn) > 0.01 || Math.abs(gamepadForward) > 0.01) {
+        player.dir += gamepadTurn * 0.085;
+        let fwd = gamepadForward * moveSpeed * 1.05;
+        if (fwd > 0.01 || fwd < -0.01) {
+            let fwdDx = Math.cos(player.dir) * fwd;
+            let fwdDy = Math.sin(player.dir) * fwd;
+            if (canMove(player.x + fwdDx, player.y)) { player.x += fwdDx; isMoving = true; }
+            if (canMove(player.x, player.y + fwdDy)) { player.y += fwdDy; isMoving = true; }
         }
     }
 
@@ -1110,6 +1235,7 @@ function drawMinimap() {
 }
 
 function loop() {
+    handleGamepad();                    // ← NEW: Always check controller every frame
     if (gameActive && !paused) {
         update();
         draw();
@@ -1119,8 +1245,10 @@ function loop() {
 
 loop();
 
+// NEW: Initialize controller menu highlight
+updateMenuSelection();
+
 window.addEventListener('resize', () => { document.documentElement.style.height = '100dvh'; });
 </script>
 </body>
 </html>
-
