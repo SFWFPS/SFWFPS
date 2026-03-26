@@ -725,10 +725,6 @@ let joyPointerId = null;
 let turnActive = false, lastTurnClientX = 0, turnPointerId = null;
 const viewportEl = document.getElementById('viewport');
 
-// === CONTROLLER SUPPORT (Steam Deck, Xbox, PlayStation browser, etc.) ===
-let prevStartPressed = false;
-let lastGpSwapTime = 0;
-
 // AUTO FULLSCREEN ON LANDSCAPE (MOBILE) + PAUSE-MENU TOGGLE (DESKTOP)
 const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 2) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const orientationMedia = window.matchMedia("(orientation: landscape)");
@@ -755,14 +751,6 @@ if (orientationMedia.matches && isMobileDevice) {
         }
     }, 1200);
 }
-
-// === GAMEPAD LISTENERS ===
-window.addEventListener('gamepadconnected', (e) => {
-    console.log('%c🎮 Controller connected! (Steam Deck / Xbox / PS5 browser supported)', 'color:#ff69b4; font-weight:bold; font-size:13px');
-});
-window.addEventListener('gamepaddisconnected', (e) => {
-    console.log('%c🎮 Controller disconnected', 'color:#ff69b4');
-});
 
 function togglePause() {
     if (!gameActive || isLoading) return;
@@ -834,8 +822,6 @@ function initGame() {
     
     lastDamageTime = Date.now();
     isDodging = false; dodgeTime = 0; lastDodgeTime = 0; dodgeDx = 0; dodgeDy = 0;
-    prevStartPressed = false;
-    lastGpSwapTime = 0;
 
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
@@ -1208,42 +1194,6 @@ function update() {
     if (attackAnim > 0) attackAnim -= 0.12;
     if (shake > 0) shake -= 0.12;
 
-    // === GAMEPAD SUPPORT (Steam Deck, Xbox, PS5 browser, etc.) ===
-    let gpForward = 0;
-    let gpTurn = 0;
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    let gp = null;
-    for (let i = 0; i < pads.length; i++) {
-        if (pads[i] && pads[i].connected) {
-            gp = pads[i];
-            break;
-        }
-    }
-    if (gp) {
-        const deadzone = 0.18;
-        let lx = gp.axes[0] ?? 0;
-        let ly = gp.axes[1] ?? 0;
-        let rx = gp.axes[2] ?? 0;
-        if (Math.abs(lx) < deadzone) lx = 0;
-        if (Math.abs(ly) < deadzone) ly = 0;
-        if (Math.abs(rx) < deadzone) rx = 0;
-
-        gpTurn = lx * 0.085 + rx * 0.12;           // left stick X + right stick X = turn
-        gpForward = -ly;                           // left stick Y (negative = forward)
-
-        const btn = gp.buttons;
-        if (btn[0] && btn[0].pressed) doBoop();           // A / ✕ = BOOP!
-        if (btn[1] && btn[1].pressed) doDodge();          // B / ○ = DODGE
-        if (btn[2] && btn[2].pressed && Date.now() - lastGpSwapTime > 250) {
-            swapWeapon();
-            lastGpSwapTime = Date.now();
-        }  // X / □ = SWAP (debounced)
-        if (btn[9] && btn[9].pressed && !prevStartPressed) {
-            togglePause();
-        }
-        prevStartPressed = !!(btn[9] && btn[9].pressed);
-    }
-
     const map = MAPS[levelIdx].m;
     const canMove = (x, y) => {
         let nx = Math.floor(x), ny = Math.floor(y);
@@ -1272,7 +1222,6 @@ function update() {
     if (keys['KeyA']) player.dir -= rotSpeed;
     if (keys['KeyD']) player.dir += rotSpeed;
     if (joyActive) player.dir += joyTurn * 0.085;
-    if (gp) player.dir += gpTurn;                     // ← CONTROLLER TURNING
 
     isMoving = false;
 
@@ -1304,16 +1253,6 @@ function update() {
                 if (canMove(player.x, player.y + fwdDy)) player.y += fwdDy;
                 isMoving = true;
             }
-        }
-
-        // CONTROLLER MOVEMENT (forward/back only - same as touch joystick)
-        if (gp && Math.abs(gpForward) > 0.1) {
-            let fwd = gpForward * moveSpeed * 1.05;
-            let fwdDx = Math.cos(player.dir) * fwd;
-            let fwdDy = Math.sin(player.dir) * fwd;
-            if (canMove(player.x + fwdDx, player.y)) player.x += fwdDx;
-            if (canMove(player.x, player.y + fwdDy)) player.y += fwdDy;
-            isMoving = true;
         }
     }
 
