@@ -532,6 +532,43 @@ const pCtx = pCanvas.getContext('2d');
 
 canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80;
 
+// === ELEGANT FPS OPTIMIZATIONS START HERE ===
+let displayList = [];                     // reused array – no more filter+concat+new array every frame
+let lastHP = -1;
+let lastScoreText = '';
+let lastHi = -1;
+let lastMultText = '';
+let lastCombo = -1;
+let lastFaceUrl = '';
+let lastIsDodging = false;
+let lastVignetteOpacity = -1;
+
+// Offscreen static minimap background (redrawn ONLY when map actually changes)
+let miniBgCanvas = document.createElement('canvas');
+miniBgCanvas.width = 80;
+miniBgCanvas.height = 80;
+let miniBgCtx = miniBgCanvas.getContext('2d');
+let minimapStaticDirty = true;
+
+function redrawMinimapStatic() {
+    const map = MAPS[levelIdx].m;
+    const cw = 80 / map[0].length;
+    const ch = 80 / map.length;
+    miniBgCtx.clearRect(0, 0, 80, 80);
+    for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+            if (map[y][x] === 1) {
+                miniBgCtx.fillStyle = "rgba(255,255,255,0.25)";
+                miniBgCtx.fillRect(x * cw, y * ch, cw, ch);
+            } else if (map[y][x] === 9) {
+                miniBgCtx.fillStyle = "#00ffff";
+                miniBgCtx.fillRect(x * cw, y * ch, cw, ch);
+            }
+        }
+    }
+}
+// === END OF FPS OPTIMIZATIONS ===
+
 let audioCtx;
 let paused = false;
 
@@ -838,6 +875,7 @@ function loadLevel(idx) {
     }
     
     projectiles = []; particles = [];
+    minimapStaticDirty = true;               // force static minimap redraw on level load
     showLevelCard(l.n, l.isSecret ? "SECRET FOUND!" : "LEVEL " + (idx + 1));
     setTimeout(() => { isLoading = false; levelTransitioning = false; }, 500);
 }
@@ -1093,7 +1131,10 @@ function checkWin() {
             if (levelIdx === 3) { exitX = 2.5; exitY = 0.5; } 
             const map = MAPS[levelIdx].m;
             const tx = Math.floor(exitX), ty = Math.floor(exitY);
-            if (map[ty] && map[ty][tx] !== undefined) map[ty][tx] = 9;
+            if (map[ty] && map[ty][tx] !== undefined) {
+                map[ty][tx] = 9;
+                minimapStaticDirty = true;   // portal appeared → static minimap must update
+            }
             portalActive = true; 
             playSound('sine', 880, 120, 0.32);
             setTimeout(() => playSound('sine', 1320, 250, 0.28), 80);
@@ -1217,28 +1258,58 @@ function update() {
 
     if (isMoving) bob += (keys['ShiftLeft'] || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
     
-    // Vignette handles Dodge flash + low HP red flash
-    vignette.style.background = isDodging ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" : "radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%)";
-    vignette.style.opacity = isDodging ? 1 : (player.hp <= 5 ? (0.45 + Math.sin(Date.now() * 0.06) * 0.45) : 0);
-    
+    // === OPTIMIZED VIGNETTE (background only updated on state change) ===
+    if (isDodging !== lastIsDodging) {
+        vignette.style.background = isDodging 
+            ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" 
+            : "radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%)";
+        lastIsDodging = isDodging;
+    }
+    const newOpacity = isDodging ? 1 : (player.hp <= 5 ? (0.45 + Math.sin(Date.now() * 0.06) * 0.45) : 0);
+    if (Math.abs(newOpacity - lastVignetteOpacity) > 0.015) {
+        vignette.style.opacity = newOpacity;
+        lastVignetteOpacity = newOpacity;
+    }
+
     player.combo = Math.max(0, player.combo - 0.12);
     player.mult = Math.floor(player.combo / 20) + 1;
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
     if (player.combo > highestCombo) highestCombo = player.combo;
 
-    document.getElementById('hp-display').innerText = `❤️ x${Math.max(0, Math.floor(player.hp))}`;
-    
-    let bonusText = untouchedSecs > 5 ? ` 🛡️+${Math.floor(untouchedSecs)}` : "";
-    document.getElementById('score-display').innerText = `✨ ${Math.floor(player.score)}${bonusText}`;
-    
-    document.getElementById('hi-display').innerText = `🏆 ${localStorage.getItem('sfwFpsHiScore') || 0}`;
-    document.getElementById('mult-display').innerText = `x${player.mult}`;
-    document.getElementById('combo-fill').style.width = player.combo + "%";
+    // === OPTIMIZED HUD (dirty-check only changed values) ===
+    const currentHP = Math.max(0, Math.floor(player.hp));
+    if (currentHP !== lastHP) {
+        document.getElementById('hp-display').innerText = `❤️ x${currentHP}`;
+        lastHP = currentHP;
+    }
 
-    const faceImg = document.getElementById('player-face');
+    const bonusText = untouchedSecs > 5 ? ` 🛡️+${Math.floor(untouchedSecs)}` : "";
+    const scoreText = `✨ ${Math.floor(player.score)}${bonusText}`;
+    if (scoreText !== lastScoreText) {
+        document.getElementById('score-display').innerText = scoreText;
+        lastScoreText = scoreText;
+    }
+
+    const currentHi = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
+    if (currentHi !== lastHi) {
+        document.getElementById('hi-display').innerText = `🏆 ${currentHi}`;
+        lastHi = currentHi;
+    }
+
+    const multText = `x${player.mult}`;
+    if (multText !== lastMultText) {
+        document.getElementById('mult-display').innerText = multText;
+        lastMultText = multText;
+    }
+
+    if (Math.abs(player.combo - lastCombo) > 0.4) {
+        document.getElementById('combo-fill').style.width = player.combo + "%";
+        lastCombo = player.combo;
+    }
+
+    // === OPTIMIZED PLAYER FACE (only change src when it actually changes) ===
     const hpPct = (player.hp / 15) * 100;
     let faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png';
-
     if (hpPct <= 50) {
         faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/50percenthealth.png';
     } else {
@@ -1248,7 +1319,10 @@ function update() {
             faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookleft.png';
         }
     }
-    faceImg.src = faceUrl;
+    if (faceUrl !== lastFaceUrl) {
+        document.getElementById('player-face').src = faceUrl;
+        lastFaceUrl = faceUrl;
+    }
 
     const activeBoss = sprites.find(s => s.type === 'boss' && s.alive);
     const bossHud = document.getElementById('boss-hud');
@@ -1463,9 +1537,15 @@ function draw() {
         ctx.globalAlpha = 1;
     }
 
-    let itms = sprites.filter(s=>s.alive).concat(projectiles).concat(particles);
-    
-    itms.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2)).forEach(s => {
+    // === OPTIMIZED SPRITE RENDERING (reused displayList, no filter/concat) ===
+    displayList.length = 0;
+    for (let s of sprites) if (s.alive) displayList.push(s);
+    for (let p of projectiles) displayList.push(p);
+    for (let p of particles) displayList.push(p);
+
+    displayList.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2));
+
+    displayList.forEach(s => {
         let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
         let ang = Math.atan2(dy, dx) - player.dir;
         while (ang < -Math.PI) ang += Math.PI*2; while (ang > Math.PI) ang -= Math.PI*2;
@@ -1513,8 +1593,9 @@ function draw() {
     if (hitFlash > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${hitFlash * 0.3})`; ctx.fillRect(0, 0, 400, 300); hitFlash -= 0.1; }
 
     ctx.restore(); 
-    ctx.save();
     
+    // Wand / ammo (unchanged)
+    ctx.save();
     let wandSway = Math.cos(bob * 0.5) * 16; 
     let wandAtkY = 0;
     let wandAtkX = 0;
@@ -1555,16 +1636,33 @@ function draw() {
 }
 
 function drawMinimap() {
-    mCtx.clearRect(0,0,80,80);
-    const map = MAPS[levelIdx].m; const cw = 80 / map[0].length, ch = 80 / map.length;
-    for(let y=0; y<map.length; y++) {
-        for(let x=0; x<map[y].length; x++) {
-            if (map[y][x] === 1) { mCtx.fillStyle = "rgba(255,255,255,0.25)"; mCtx.fillRect(x*cw, y*ch, cw, ch); } 
-            else if (map[y][x] === 9) { mCtx.fillStyle = "#00ffff"; mCtx.fillRect(x*cw, y*ch, cw, ch); }
-        }
+    mCtx.clearRect(0, 0, 80, 80);
+    
+    // Blit pre-rendered static map (only redrawn when portal appears or level changes)
+    if (minimapStaticDirty) {
+        redrawMinimapStatic();
+        minimapStaticDirty = false;
     }
-    sprites.forEach(s => { if(s.alive) { mCtx.fillStyle = s.pickup ? "#00ffff" : "#ff3366"; mCtx.beginPath(); mCtx.arc(s.x*cw, s.y*ch, 2.5, 0, Math.PI*2); mCtx.fill(); }});
-    mCtx.fillStyle = "#44ff88"; mCtx.beginPath(); mCtx.arc(player.x*cw, player.y*ch, 3.5, 0, Math.PI*2); mCtx.fill();
+    mCtx.drawImage(miniBgCanvas, 0, 0);
+
+    // Dynamic elements only (player + enemies/pickups)
+    const map = MAPS[levelIdx].m;
+    const cw = 80 / map[0].length;
+    const ch = 80 / map.length;
+
+    sprites.forEach(s => {
+        if (s.alive) {
+            mCtx.fillStyle = s.pickup ? "#00ffff" : "#ff3366";
+            mCtx.beginPath();
+            mCtx.arc(s.x * cw, s.y * ch, 2.5, 0, Math.PI * 2);
+            mCtx.fill();
+        }
+    });
+
+    mCtx.fillStyle = "#44ff88";
+    mCtx.beginPath();
+    mCtx.arc(player.x * cw, player.y * ch, 3.5, 0, Math.PI * 2);
+    mCtx.fill();
 }
 
 function loop() { if (gameActive && !paused) { update(); draw(); } requestAnimationFrame(loop); }
