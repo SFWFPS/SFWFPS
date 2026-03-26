@@ -535,6 +535,11 @@ let levelTransitioning = false, portalActive = false;
 let hitFlash = 0;
 let difficultyMult = 1.5;
 
+// NEW: Post-victory stats
+let totalBoops = 0;
+let highestCombo = 0;
+let totalPlushiesSaved = 0;
+
 let joyActive = false, joyForward = 0, joyTurn = 0, currentJoyX = 0, currentJoyY = 0;
 const JOY_RADIUS = 60;
 const joystickContainer = document.getElementById('joystick-container');
@@ -620,6 +625,12 @@ function initGame() {
     player = { x: 0, y: 0, dir: 0, hp: 15, score: 0, combo: 0, mult: 1 };
     levelIdx = 0; gameActive = true; particles = []; isLoading = false; maxMultSeen = 1; levelTransitioning = false;
     portalActive = false; hitFlash = 0; paused = false;
+    
+    // Reset post-victory stats
+    totalBoops = 0;
+    highestCombo = 0;
+    totalPlushiesSaved = 0;
+
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
     loadLevel(0);
@@ -772,6 +783,38 @@ document.addEventListener('pointermove', e => {
 });
 document.addEventListener('pointerup', e => { if (turnPointerId === e.pointerId) { turnActive = false; turnPointerId = null; } });
 
+// NEW: Raycast helper to check if a straight line from player to target is blocked by a wall
+function raycastWallDistance(dirX, dirY) {
+    const map = MAPS[levelIdx].m;
+    let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
+    const deltaDistX = dirX === 0 ? 999999 : Math.abs(1 / dirX);
+    const deltaDistY = dirY === 0 ? 999999 : Math.abs(1 / dirY);
+    let stepX = dirX < 0 ? -1 : 1;
+    let stepY = dirY < 0 ? -1 : 1;
+    let sideDistX = dirX < 0 ? (player.x - mapX) * deltaDistX : (mapX + 1.0 - player.x) * deltaDistX;
+    let sideDistY = dirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1.0 - player.y) * deltaDistY;
+    let perpWallDist = 9999;
+    let steps = 0;
+    let side = 0;
+    while (steps < 60) {
+        steps++;
+        if (sideDistX < sideDistY) {
+            sideDistX += deltaDistX;
+            mapX += stepX;
+            side = 0;
+        } else {
+            sideDistY += deltaDistY;
+            mapY += stepY;
+            side = 1;
+        }
+        if (map[mapY] && map[mapY][mapX] > 0) {
+            perpWallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY;
+            break;
+        }
+    }
+    return perpWallDist;
+}
+
 function doBoop() {
     if (!gameActive || isLoading || paused) return;
     attackAnim = 1.0;
@@ -783,25 +826,40 @@ function doBoop() {
         let ang = (player.dir - 0.25) + Math.random() * 0.5;
         particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.18, vy: Math.sin(ang)*0.18, l: 0.85, c: "🌸", scale: 0.32});
     }
+
+    // FIXED: Player BOOP now respects walls (no shooting through walls)
     sprites.forEach(s => {
-        let d = Math.sqrt((s.x-player.x)**2 + (s.y-player.y)**2);
+        if (!s.alive || s.pickup) return;
+        let d = Math.hypot(s.x - player.x, s.y - player.y);
+        if (d >= 6 || d < 0.01) return;
         let angToEnemy = Math.atan2(s.y - player.y, s.x - player.x);
         let angleDiff = Math.abs(angToEnemy - player.dir);
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        if (s.alive && d < 6 && angleDiff < 0.85 && !s.pickup) {
-            s.hp--;
-            hitFlash = 1.0;
-            playSound('triangle', 520, 95, 0.19);
-            player.combo = Math.min(100, player.combo + 28);
-            spawnParticles(s.x, s.y, "✨", 6);
-            if (s.hp <= 0) {
-                s.alive = false;
-                playSound('sine', 340, 380, 0.26, -240);
-                player.score += (s.type === 'boss' ? 2000 : 220) * player.mult;
-                spawnParticles(s.x, s.y, "☁️", 14);
-                if (!s.type && Math.random() < 0.35) sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true});
-                checkWin();
-            }
+        if (angleDiff >= 0.85) return;
+
+        // Line-of-sight check
+        let dirX = (s.x - player.x) / d;
+        let dirY = (s.y - player.y) / d;
+        let wallDist = raycastWallDistance(dirX, dirY);
+        if (wallDist < d - 0.4) return; // wall blocks the boop
+
+        s.hp--;
+        hitFlash = 1.0;
+        playSound('triangle', 520, 95, 0.19);
+        player.combo = Math.min(100, player.combo + 28);
+        spawnParticles(s.x, s.y, "✨", 6);
+        if (s.hp <= 0) {
+            s.alive = false;
+            playSound('sine', 340, 380, 0.26, -240);
+            player.score += (s.type === 'boss' ? 2000 : 220) * player.mult;
+            
+            // NEW: Track boops and plushies saved
+            totalBoops++;
+            totalPlushiesSaved++;
+            
+            spawnParticles(s.x, s.y, "☁️", 14);
+            if (!s.type && Math.random() < 0.35) sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true});
+            checkWin();
         }
     });
 }
@@ -838,12 +896,27 @@ function showEnd(msg) {
     const shareBtn = document.getElementById('share-btn');
     const isWin = msg.includes("VICTORY");
     overlay.style.borderColor = isWin ? "var(--sky)" : "var(--hot-pink)";
+    
     let highScore = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
     let currentScore = Math.floor(player.score);
-    if (currentScore > highScore) { localStorage.setItem('sfwFpsHiScore', currentScore); highScore = currentScore; }
+    if (currentScore > highScore) { 
+        localStorage.setItem('sfwFpsHiScore', currentScore); 
+        highScore = currentScore; 
+    }
+    
     overlay.style.display = 'flex';
     document.getElementById('status-msg').innerText = msg;
-    document.getElementById('final-stats').innerHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
+    
+    // NEW: Post-victory screen with full stats
+    let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
+    if (isWin) {
+        const finalCombo = Math.floor(highestCombo);
+        statsHTML += `<br><br><span style="color:var(--sky);">🪄 Total Boops: ${totalBoops}</span>`;
+        statsHTML += `<br><span style="color:#ffcc00;">🔥 Highest Combo: ${finalCombo}%</span>`;
+        statsHTML += `<br><span style="color:var(--hot-pink);">🧸 Plushies Saved: ${totalPlushiesSaved}</span>`;
+    }
+    document.getElementById('final-stats').innerHTML = statsHTML;
+    
     shareBtn.onclick = () => {
         const fullPost = `${isWin ? '🏆' : '🧸'} Score: ${currentScore} in SFWFPS!\nhttps://sfwdoom.fun`;
         navigator.clipboard.writeText(fullPost).then(() => {
@@ -898,6 +971,9 @@ function update() {
     player.combo = Math.max(0, player.combo - 0.12);
     player.mult = Math.floor(player.combo / 20) + 1;
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
+
+    // NEW: Track highest combo every frame
+    if (player.combo > highestCombo) highestCombo = player.combo;
 
     document.getElementById('hp-display').innerText = `❤️ x${Math.max(0, Math.floor(player.hp))}`;
     document.getElementById('score-display').innerText = `✨ ${Math.floor(player.score)}`;
@@ -974,17 +1050,34 @@ function update() {
         }
     });
 
-    projectiles.forEach((p, i) => {
-        p.x += p.vx; p.y += p.vy; p.l--;
-        if (Math.sqrt((p.x-player.x)**2 + (p.y-player.y)**2) < 0.45) {
-            const damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
-            player.hp -= damage;
-            player.combo = 0; shake = 1.1;
-            playSound('triangle', 410, 135, 0.23, -110);
-            if (player.hp <= 0) showEnd("BOOPED! 🧸");
+    // FIXED: Enemy bullets now use sub-step movement + proper wall collision (no more tunneling through walls)
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        let removed = false;
+        const steps = 4;
+        const stepVx = p.vx / steps;
+        const stepVy = p.vy / steps;
+        for (let k = 0; k < steps && !removed; k++) {
+            p.x += stepVx;
+            p.y += stepVy;
+            if (Math.hypot(p.x - player.x, p.y - player.y) < 0.45) {
+                const damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
+                player.hp -= damage;
+                player.combo = 0; shake = 1.1;
+                playSound('triangle', 410, 135, 0.23, -110);
+                if (player.hp <= 0) showEnd("BOOPED! 🧸");
+                removed = true;
+            }
+            if (!removed && map[Math.floor(p.y)]?.[Math.floor(p.x)] === 1) {
+                removed = true;
+            }
+        }
+        p.l -= 1;
+        if (removed || p.l <= 0) {
             projectiles.splice(i, 1);
-        } else if (p.l <= 0 || map[Math.floor(p.y)]?.[Math.floor(p.x)] === 1) projectiles.splice(i, 1);
-    });
+        }
+    }
+
     particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.l -= 0.035; if (p.l <= 0) particles.splice(i, 1); });
 }
 
