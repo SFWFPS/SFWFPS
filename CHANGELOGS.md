@@ -1,9 +1,10 @@
 # ***SFWFPS Changelog***
 
 **Repository:** https://github.com/sfwfps/SFWFPS
-**Project:** Single-file HTML5 raycasting game — a wholesome “Plushie Edition” of DOOM. Fully playable at https://sfwdoom.fun.
+**Project:** Single-file HTML5 raycasting game — a wholesome “Plushie Edition” of DOOM. Fully playable at https://sfwfps.com.
 
 **March 26, 2026**
+- Game hosting migrated to https://sfwfps.com.
 - The Toy Box System: Implemented a multi-weapon arsenal (Magic Wand, Warm Milk, Heavy Pillow, Lullaby Box) featuring distinct fire rates, damage stats, spread patterns, particle effects, and custom animations.
 - Dodge Mechanic: Added a skill-based dash move that grants invincibility frames (i-frames). Perfectly timing a dodge against the Boss's instant-kill attack awards a massive combo-scaled score bonus.
 - Dynamic Drops: Built an intelligent loot system that drops ammo boxes and includes a "pity drop" mechanic that boosts health item spawns when the player's HP is critically low.
