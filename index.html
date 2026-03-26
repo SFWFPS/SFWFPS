@@ -208,7 +208,6 @@
             touch-action: none;
         }
         #pause-toggle { left: 10px; }
-        #fullscreen-toggle { left: 64px; }
 
         #top-hud-overlay {
             position: absolute;
@@ -461,7 +460,6 @@
 
     <div id="viewport">
         <button id="pause-toggle" class="util-btn" onclick="togglePause()">⏸️</button>
-        <button id="fullscreen-toggle" class="util-btn">🖥️</button>
 
         <canvas id="c"></canvas>
         <div id="vignette"></div>
@@ -509,6 +507,7 @@
         <h1>GAME PAUSED</h1>
         <div class="overlay-btns">
             <button id="resume-btn" onclick="togglePause()">RESUME QUEST</button>
+            <button onclick="toggleFullscreen()">🖥️ FULLSCREEN</button>
             <button onclick="returnToMenu()">QUIT TO MENU</button>
         </div>
     </div>
@@ -689,6 +688,35 @@ let joyPointerId = null;
 let turnActive = false, lastTurnClientX = 0, turnPointerId = null;
 const viewportEl = document.getElementById('viewport');
 
+// AUTO FULLSCREEN ON LANDSCAPE (MOBILE) + PAUSE-MENU TOGGLE (DESKTOP)
+const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 2) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const orientationMedia = window.matchMedia("(orientation: landscape)");
+
+function handleOrientationChange(e) {
+    if (e.matches && isMobileDevice && gameActive && !paused) {
+        // Only enter fullscreen (never auto-exit)
+        const doc = window.document;
+        const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+        if (!currentlyFullscreen) {
+            toggleFullscreen();
+        }
+    }
+}
+orientationMedia.addEventListener("change", handleOrientationChange);
+
+// Also check initial orientation in case the player starts in landscape
+if (orientationMedia.matches && isMobileDevice) {
+    setTimeout(() => {
+        if (gameActive && !paused) {
+            const doc = window.document;
+            const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+            if (!currentlyFullscreen) {
+                toggleFullscreen();
+            }
+        }
+    }, 1200);
+}
+
 function togglePause() {
     if (!gameActive || isLoading) return;
     paused = !paused;
@@ -729,9 +757,6 @@ function applyiOSFullscreenFallback(el) {
         window.scrollTo(0, 0);
     }
 }
-
-const fsBtn = document.getElementById('fullscreen-toggle');
-fsBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }, { passive: false });
 
 function selectDifficulty(mult) {
     difficultyMult = mult;
