@@ -43,4 +43,4 @@ The game features several distinct zones:
  * The Starry Summit (Final Boss)
    
 # Getting Started
-Simply navigate to https://sfwdoom.fun in any modern web browser to start your quest!
+Simply navigate to https://sfwfps.com in any modern web browser to start your quest!
