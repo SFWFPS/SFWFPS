@@ -122,7 +122,7 @@
             position: absolute; inset: 0; pointer-events: none; 
             opacity: 0; 
             background: radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%); 
-            transition: opacity 0.3s; 
+            transition: opacity 0.2s, background 0.2s; 
             z-index: 5; 
         }
 
@@ -274,6 +274,12 @@
             transition: transform 0.03s linear;
         }
 
+        .action-btns {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
         .btn { 
             background: linear-gradient(145deg, #ff85c0, #d88191); 
             border: 3px solid #fff; 
@@ -287,6 +293,29 @@
         }
         .btn:active { transform: scale(0.92); box-shadow: 2px 2px 8px rgba(0,0,0,0.6); background: var(--hot-pink); }
         
+        #btn-dodge {
+            width: 64px; height: 64px; 
+            border-radius: 50%; 
+            font-size: 24px; 
+            padding: 0; 
+            display: flex; 
+            align-items: center; justify-content: center; 
+            background: radial-gradient(circle, #ffeb3b, #fbc02d); 
+            box-shadow: 0 0 15px #fbc02d;
+            transition: filter 0.2s, opacity 0.2s;
+        }
+
+        #btn-swap {
+            width: 64px; height: 64px; 
+            border-radius: 50%; 
+            font-size: 24px; 
+            padding: 0; 
+            display: flex; 
+            align-items: center; justify-content: center; 
+            background: radial-gradient(circle, #4fc3f7, #0288d1); 
+            box-shadow: 0 0 15px var(--sky);
+        }
+
         #btn-boop { 
             width: 108px; height: 108px; 
             background: radial-gradient(circle, var(--hot-pink), #a30b5d); 
@@ -332,6 +361,13 @@
         #share-btn { background: var(--sky); box-shadow: 0 0 20px var(--sky); }
         #retry-btn, #resume-btn { background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink); }
 
+        #scores-list {
+            margin: 20px 0; font-family: 'Courier New', monospace; font-size: 18px; text-align: left; width: 280px;
+        }
+        .score-row {
+            display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px;
+        }
+
         /* Landscape Optimization */
         @media (orientation: landscape) {
             #bottom-controls-overlay {
@@ -372,6 +408,7 @@
             #joystick-container { width: 138px; height: 138px; }
             #joystick-knob { width: 54px; height: 54px; }
             #btn-boop { width: 88px; height: 88px; font-size: 13px; }
+            #btn-swap, #btn-dodge { width: 52px; height: 52px; font-size: 18px; }
             #bottom-controls-overlay { padding-bottom: 6px; }
             #boss-hud { top: 55px; width: 200px; }
         }
@@ -401,6 +438,18 @@
                 Naptime<br>
                 <small>Hard • 3 damage • 2.0× health • 3× enemies</small>
             </button>
+            
+            <button onclick="showScoresMenu()" class="diff-btn" style="background: #2d1b2e; border: 2px solid var(--sky); margin-top: 15px;">
+                High Scores 🏆
+            </button>
+        </div>
+    </div>
+
+    <div id="scores-menu" class="overlay">
+        <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">TOP 10 SLEEPERS</h1>
+        <div id="scores-list"></div>
+        <div class="overlay-btns">
+            <button onclick="hideScoresMenu()" style="background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink);">CLOSE</button>
         </div>
     </div>
 
@@ -441,7 +490,11 @@
                 <div id="joystick-container">
                     <div id="joystick-knob"></div>
                 </div>
-                <button class="btn" id="btn-boop">BOOP!</button>
+                <div class="action-btns">
+                    <button class="btn" id="btn-dodge">💨</button>
+                    <button class="btn" id="btn-swap">🔄</button>
+                    <button class="btn" id="btn-boop">BOOP!</button>
+                </div>
             </div>
         </div>
     </div>
@@ -459,6 +512,7 @@
         <div id="final-stats"></div>
         <div class="overlay-btns">
             <button id="share-btn">Share Your Quest 🪄</button>
+            <button onclick="showScoresMenu()" style="background: #2d1b2e; border: 2px solid var(--sky); box-shadow: 0 0 20px var(--sky);">HIGH SCORES</button>
             <button id="retry-btn">RESTART QUEST</button>
         </div>
     </div>
@@ -495,6 +549,54 @@ function playSound(type = 'sine', freq = 440, duration = 200, vol = 0.25, sweep 
     osc.stop(now + duration / 1000 + 0.03);
 }
 
+// --- SCOREBOARD SYSTEM ---
+function getTopScores() {
+    let scores = localStorage.getItem('sfwFpsTopScores');
+    return scores ? JSON.parse(scores) : [];
+}
+
+function saveScore(newScore) {
+    newScore = Math.floor(newScore);
+    if (newScore <= 0) return false;
+    let scores = getTopScores();
+    
+    // Check if new score makes the top 10
+    if (scores.length < 10 || newScore > scores[scores.length - 1].score) {
+        let initials = prompt("New High Score! Enter your initials (max 3):", "AAA");
+        if (!initials) initials = "???";
+        initials = initials.substring(0, 3).toUpperCase();
+        
+        scores.push({ name: initials, score: newScore });
+        scores.sort((a, b) => b.score - a.score);
+        scores = scores.slice(0, 10); // Keep only top 10
+        
+        localStorage.setItem('sfwFpsTopScores', JSON.stringify(scores));
+        localStorage.setItem('sfwFpsHiScore', scores[0].score); // Sync absolute best for the HUD
+        return true;
+    }
+    return false;
+}
+
+function showScoresMenu() {
+    let scores = getTopScores();
+    let html = "";
+    if (scores.length === 0) {
+        html = "<div style='text-align:center;'>No scores yet! Get Booping!</div>";
+    } else {
+        scores.forEach((s, i) => {
+            let num = (i + 1).toString().padStart(2, '0');
+            html += `<div class="score-row"><span>${num}. ${s.name}</span> <span style="color:var(--pink); text-shadow: 0 0 5px var(--pink);">${s.score}</span></div>`;
+        });
+    }
+    document.getElementById('scores-list').innerHTML = html;
+    document.getElementById('scores-menu').style.display = 'flex';
+}
+
+function hideScoresMenu() {
+    document.getElementById('scores-menu').style.display = 'none';
+}
+
+
 const assets = {
     bearIdle: new Image(), bearAtk: new Image(),
     smallIdle: new Image(), smallAtk: new Image(),
@@ -522,18 +624,47 @@ assets.wall3.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads
 assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image%20(1).jpg';
 
 const MAPS = [
-    { n: "The Fuzzy Forest", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:6.5,y:1.5,e:"BEAR"},{x:4.5,y:5.5,e:"SMALL"}] },
+    { n: "The Fuzzy Forest", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [
+        {x:6.5,y:1.5,e:"BEAR"},
+        {x:4.5,y:5.5,e:"SMALL"},
+        {x: 2.5, y: 1.5, e: "🍼", pickup: true}, 
+        {x: 3.5, y: 1.5, e: "🛏️", pickup: true}, 
+        {x: 4.5, y: 1.5, e: "🎵", pickup: true},
+        {x: 5.5, y: 1.5, e: "📦", pickup: true} 
+    ] },
     { n: "The Velvet Vaults", tex: assets.wall2, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [{x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"}] },
     { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"}] },
     { n: "Sugar Sanctuary", tex: assets.wall2, m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.1], enemies: [{x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true}], isSecret:true },
     { n: "The Starry Summit", tex: assets.wall3, m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"BOSS_FINAL"} }
 ];
 
-let levelIdx = 0, player, sprites = [], projectiles = [], particles = [], keys = {}, zBuf = new Array(400);
+let levelIdx = 0, player, sprites = [], projectiles = [], particles = [], keys = {};
+let zBuf = new Array(400);
 let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, isLoading = false, maxMultSeen = 1;
 let levelTransitioning = false, portalActive = false;  
 let hitFlash = 0;
 let difficultyMult = 1.5;
+
+// --- TOY BOX SYSTEM ---
+const TOYS = {
+    "🪄": { name: "Magic Wand", dmg: 1, range: 6, cooldown: 0, spread: 0.85, isAoE: false },
+    "🍼": { name: "Warm Milk", dmg: 0.5, range: 8, cooldown: 120, spread: 0.4, isAoE: false },
+    "🛏️": { name: "Heavy Pillow", dmg: 3, range: 4, cooldown: 600, spread: 1.2, isAoE: false },
+    "🎵": { name: "Lullaby Box", dmg: 2, range: 5, cooldown: 1000, spread: Math.PI * 2, isAoE: true }
+};
+
+let currentToy = "🪄";
+let unlockedToys = { "🪄": true, "🍼": false, "🛏️": false, "🎵": false };
+let toyAmmo = { "🪄": Infinity, "🍼": 0, "🛏️": 0, "🎵": 0 };
+let weaponUsage = { "🪄": 0, "🍼": 0, "🛏️": 0, "🎵": 0 };
+let lastBoopTime = 0;
+let lastDamageTime = 0; 
+
+// --- DODGE SYSTEM ---
+let isDodging = false;
+let dodgeTime = 0;
+let lastDodgeTime = 0;
+let dodgeDx = 0, dodgeDy = 0;
 
 // Post-victory stats
 let totalBoops = 0;
@@ -559,8 +690,6 @@ function togglePause() {
     }
 }
 
-/** * FIXED FULLSCREEN LOGIC FOR IOS
- */
 function toggleFullscreen() {
     const doc = window.document;
     const docEl = doc.documentElement;
@@ -569,11 +698,9 @@ function toggleFullscreen() {
     const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
     const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
 
-    // Check if browser supports Fullscreen API (Desktop, Android, iPad)
     if (requestFullScreen) {
         if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
             requestFullScreen.call(docEl).catch(err => {
-                console.warn("Fullscreen request failed, applying iOS fallback.");
                 applyiOSFullscreenFallback(vp);
             });
         } else {
@@ -581,7 +708,6 @@ function toggleFullscreen() {
             vp.classList.remove('ios-fullscreen-fix');
         }
     } else {
-        // Fallback for iPhone/iOS Safari
         applyiOSFullscreenFallback(vp);
     }
 }
@@ -591,18 +717,12 @@ function applyiOSFullscreenFallback(el) {
         el.classList.remove('ios-fullscreen-fix');
     } else {
         el.classList.add('ios-fullscreen-fix');
-        // iOS Safari address bar fix: scroll to top to hide UI
         window.scrollTo(0, 0);
     }
 }
 
-// Fullscreen fix for touch devices - Using pointerdown + passive:false for immediate iOS response
 const fsBtn = document.getElementById('fullscreen-toggle');
-fsBtn.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleFullscreen();
-}, { passive: false });
+fsBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }, { passive: false });
 
 function selectDifficulty(mult) {
     difficultyMult = mult;
@@ -613,8 +733,7 @@ function selectDifficulty(mult) {
 }
 
 function returnToMenu() {
-    gameActive = false;
-    paused = false;
+    gameActive = false; paused = false;
     sprites = []; projectiles = []; particles = [];
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
@@ -626,10 +745,14 @@ function initGame() {
     levelIdx = 0; gameActive = true; particles = []; isLoading = false; maxMultSeen = 1; levelTransitioning = false;
     portalActive = false; hitFlash = 0; paused = false;
     
-    // Reset post-victory stats
-    totalBoops = 0;
-    highestCombo = 0;
-    totalPlushiesSaved = 0;
+    currentToy = "🪄";
+    unlockedToys = { "🪄": true, "🍼": false, "🛏️": false, "🎵": false };
+    toyAmmo = { "🪄": Infinity, "🍼": 0, "🛏️": 0, "🎵": 0 };
+    weaponUsage = { "🪄": 0, "🍼": 0, "🛏️": 0, "🎵": 0 };
+    totalBoops = 0; highestCombo = 0; totalPlushiesSaved = 0;
+    
+    lastDamageTime = Date.now();
+    isDodging = false; dodgeTime = 0; lastDodgeTime = 0; dodgeDx = 0; dodgeDy = 0;
 
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
@@ -638,11 +761,8 @@ function initGame() {
 
 function loadLevel(idx) {
     if (levelTransitioning || idx >= MAPS.length) return;
-    levelTransitioning = true;
-    isLoading = true;
-    levelIdx = idx; const l = MAPS[idx];
-    player.x = l.start[0]; player.y = l.start[1];
-    portalActive = false;  
+    levelTransitioning = true; isLoading = true; levelIdx = idx; const l = MAPS[idx];
+    player.x = l.start[0]; player.y = l.start[1]; portalActive = false;  
 
     const qtyMult = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
     sprites = [];
@@ -651,9 +771,7 @@ function loadLevel(idx) {
     let floorTiles = [];
     for (let y = 0; y < mapData.length; y++) {
         for (let x = 0; x < mapData[y].length; x++) {
-            if (mapData[y][x] === 0) {
-                floorTiles.push({x: x + 0.5, y: y + 0.5});
-            }
+            if (mapData[y][x] === 0) floorTiles.push({x: x + 0.5, y: y + 0.5});
         }
     }
 
@@ -664,12 +782,7 @@ function loadLevel(idx) {
             const pos = floorTiles[Math.floor(Math.random() * floorTiles.length)];
             let tooClose = false;
             for (let ex of excludeList) {
-                const dx = pos.x - ex.x;
-                const dy = pos.y - ex.y;
-                if (dx*dx + dy*dy < 2.8) {
-                    tooClose = true;
-                    break;
-                }
+                if ((pos.x - ex.x)**2 + (pos.y - ex.y)**2 < 2.8) { tooClose = true; break; }
             }
             if (!tooClose) return {x: pos.x, y: pos.y};
             attempts++;
@@ -678,43 +791,18 @@ function loadLevel(idx) {
     }
 
     (l.enemies || []).forEach(original => {
-        if (original.pickup) {
-            sprites.push({...original, alive: true});
-            return;
-        }
+        if (original.pickup) { sprites.push({...original, alive: true}); return; }
         const placedPositions = [];
         for (let i = 0; i < qtyMult; i++) {
-            const spawnPos = i === 0 
-                ? {x: original.x, y: original.y}
-                : getRandomSpreadPosition(placedPositions);
-
+            const spawnPos = i === 0 ? {x: original.x, y: original.y} : getRandomSpreadPosition(placedPositions);
             placedPositions.push(spawnPos);
-
-            sprites.push({
-                ...original,
-                x: spawnPos.x,
-                y: spawnPos.y,
-                hp: Math.round(3 * difficultyMult),
-                alive: true,
-                lastShot: Date.now() + 2000 + Math.random() * 1200,
-                atkTimer: 0
-            });
+            sprites.push({ ...original, x: spawnPos.x, y: spawnPos.y, hp: Math.round(3 * difficultyMult), alive: true, lastShot: Date.now() + 2000 + Math.random() * 1200, atkTimer: 0 });
         }
     });
 
     if (l.boss) {
         const bossMaxHp = Math.round(12 * difficultyMult);
-        sprites.push({
-            ...l.boss, 
-            hp: bossMaxHp,
-            maxHp: bossMaxHp,
-            alive: true, 
-            type: 'boss', 
-            lastShot: Date.now(), 
-            atkTimer: 0, 
-            strafeDir: 1, 
-            strafeTimer: 0
-        });
+        sprites.push({ ...l.boss, hp: bossMaxHp, maxHp: bossMaxHp, alive: true, type: 'boss', lastShot: Date.now(), atkTimer: 0, strafeDir: 1, strafeTimer: 0 });
     }
     
     projectiles = []; particles = [];
@@ -729,11 +817,60 @@ function showLevelCard(name, sub) {
     card.style.opacity = 1; setTimeout(() => card.style.opacity = 0, 2500);
 }
 
+function swapWeapon(index) {
+    const toysList = ["🪄", "🍼", "🛏️", "🎵"];
+    if (index !== undefined) {
+        if (unlockedToys[toysList[index]] && (toyAmmo[toysList[index]] > 0 || toysList[index] === "🪄")) {
+            currentToy = toysList[index];
+            playSound('sine', 800, 50, 0.1);
+        }
+    } else {
+        let curIdx = toysList.indexOf(currentToy);
+        for (let i=1; i<=4; i++) {
+            let nextIdx = (curIdx + i) % 4;
+            if (unlockedToys[toysList[nextIdx]] && (toyAmmo[toysList[nextIdx]] > 0 || toysList[nextIdx] === "🪄")) {
+                currentToy = toysList[nextIdx];
+                playSound('sine', 800, 50, 0.1);
+                break;
+            }
+        }
+    }
+}
+
+function doDodge() {
+    if (!gameActive || isLoading || paused || isDodging) return;
+    if (Date.now() - lastDodgeTime < 1000) return; 
+
+    lastDodgeTime = Date.now();
+    isDodging = true;
+    dodgeTime = 12; 
+    
+    playSound('sine', 300, 150, 0.2, -200); 
+
+    let moveDir = player.dir;
+    if (keys['KeyS'] || joyForward < -0.1) moveDir += Math.PI; 
+    
+    let speed = 0.22;
+    dodgeDx = Math.cos(moveDir) * speed;
+    dodgeDy = Math.sin(moveDir) * speed;
+    
+    for(let i=0; i<8; i++) {
+        let ang = moveDir + Math.PI + (Math.random()-0.5); 
+        particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.1, vy: Math.sin(ang)*0.1, l: 0.8, c: "💨", scale: 0.5, isParticle: true});
+    }
+}
+
 window.onkeydown = e => { 
     if (e.code === 'Escape') togglePause();
     if (paused) return;
     keys[e.code] = true; 
     if (e.code === 'Space') doBoop(); 
+    if (e.code === 'KeyF') doDodge();
+    if (e.code === 'Digit1') swapWeapon(0);
+    if (e.code === 'Digit2') swapWeapon(1);
+    if (e.code === 'Digit3') swapWeapon(2);
+    if (e.code === 'Digit4') swapWeapon(3);
+    if (e.code === 'KeyQ' || e.code === 'KeyE') swapWeapon();
 };
 window.onkeyup = e => keys[e.code] = false;
 
@@ -741,15 +878,21 @@ const boopBtn = document.getElementById('btn-boop');
 boopBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doBoop(); });
 boopBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doBoop(); }, { passive: false });
 
+const swapBtn = document.getElementById('btn-swap');
+swapBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) swapWeapon(); });
+swapBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) swapWeapon(); }, { passive: false });
+
+const dodgeBtn = document.getElementById('btn-dodge');
+dodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doDodge(); });
+dodgeBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doDodge(); }, { passive: false });
+
 let joyCenterX, joyCenterY;
 function setupJoystick() {
     joystickContainer.addEventListener('pointerdown', e => {
         if (paused || joyPointerId !== null) return;
-        joyPointerId = e.pointerId;
-        joyActive = true;
+        joyPointerId = e.pointerId; joyActive = true;
         const rect = joystickContainer.getBoundingClientRect();
-        joyCenterX = rect.left + rect.width / 2;
-        joyCenterY = rect.top + rect.height / 2;
+        joyCenterX = rect.left + rect.width / 2; joyCenterY = rect.top + rect.height / 2;
         updateJoystick(e);
     });
     document.addEventListener('pointermove', e => { if (joyActive && joyPointerId === e.pointerId) updateJoystick(e); });
@@ -771,7 +914,7 @@ function updateJoystick(e) {
 setupJoystick();
 
 viewportEl.addEventListener('pointerdown', e => {
-    if (paused || e.target.id === 'm-canvas' || e.target.id === 'player-face' || e.target.className.includes('util-btn')) return;
+    if (paused || e.target.id === 'm-canvas' || e.target.id === 'player-face' || e.target.className.includes('btn')) return;
     if (turnPointerId !== null) return;
     turnPointerId = e.pointerId; turnActive = true; lastTurnClientX = e.clientX;
 });
@@ -783,33 +926,21 @@ document.addEventListener('pointermove', e => {
 });
 document.addEventListener('pointerup', e => { if (turnPointerId === e.pointerId) { turnActive = false; turnPointerId = null; } });
 
-// Raycast helper to check if a straight line from player to target is blocked by a wall
 function raycastWallDistance(dirX, dirY) {
     const map = MAPS[levelIdx].m;
     let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
     const deltaDistX = dirX === 0 ? 999999 : Math.abs(1 / dirX);
     const deltaDistY = dirY === 0 ? 999999 : Math.abs(1 / dirY);
-    let stepX = dirX < 0 ? -1 : 1;
-    let stepY = dirY < 0 ? -1 : 1;
+    let stepX = dirX < 0 ? -1 : 1; let stepY = dirY < 0 ? -1 : 1;
     let sideDistX = dirX < 0 ? (player.x - mapX) * deltaDistX : (mapX + 1.0 - player.x) * deltaDistX;
     let sideDistY = dirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1.0 - player.y) * deltaDistY;
-    let perpWallDist = 9999;
-    let steps = 0;
-    let side = 0;
+    let perpWallDist = 9999; let steps = 0; let side = 0;
     while (steps < 60) {
         steps++;
-        if (sideDistX < sideDistY) {
-            sideDistX += deltaDistX;
-            mapX += stepX;
-            side = 0;
-        } else {
-            sideDistY += deltaDistY;
-            mapY += stepY;
-            side = 1;
-        }
+        if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
+        else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
         if (map[mapY] && map[mapY][mapX] > 0) {
-            perpWallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY;
-            break;
+            perpWallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY; break;
         }
     }
     return perpWallDist;
@@ -817,33 +948,55 @@ function raycastWallDistance(dirX, dirY) {
 
 function doBoop() {
     if (!gameActive || isLoading || paused) return;
-    attackAnim = 1.0;
-    playSound('sine', 920, 55, 0.28);
-    setTimeout(() => playSound('sine', 1240, 65, 0.26), 28);
-    setTimeout(() => playSound('triangle', 1580, 85, 0.22), 62);
+    
+    let toy = TOYS[currentToy];
+    if (Date.now() - lastBoopTime < toy.cooldown) return; 
 
-    for(let i=0; i<18; i++) {
-        let ang = (player.dir - 0.25) + Math.random() * 0.5;
-        particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.18, vy: Math.sin(ang)*0.18, l: 0.85, c: "🌸", scale: 0.32});
+    lastBoopTime = Date.now();
+    weaponUsage[currentToy]++;
+    attackAnim = 1.0;
+    
+    let freq = currentToy === "🛏️" ? 300 : (currentToy === "🍼" ? 1200 : 920);
+    playSound('sine', freq, 55, 0.28);
+    if (currentToy === "🎵") playSound('triangle', 600, 300, 0.3); 
+
+    if (currentToy === "🎵") {
+        for(let i=0; i<24; i++) {
+            let ang = (i / 24) * Math.PI * 2;
+            particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.25, vy: Math.sin(ang)*0.25, l: 1.0, c: "🎶", scale: 0.6, isParticle: true});
+        }
+    } else if (currentToy === "🛏️") {
+        for(let i=0; i<15; i++) {
+            let ang = (player.dir - 0.6) + Math.random() * 1.2;
+            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.2, vy: Math.sin(ang)*0.2, l: 0.8, c: "🪶", scale: 0.4, isParticle: true});
+        }
+    } else if (currentToy === "🍼") {
+        let ang = player.dir + (Math.random()-0.5)*0.1;
+        particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.3, vy: Math.sin(ang)*0.3, l: 1.0, c: "💧", scale: 0.3, isParticle: true});
+    } else {
+        for(let i=0; i<8; i++) {
+            let ang = (player.dir - 0.2) + Math.random() * 0.4;
+            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.18, vy: Math.sin(ang)*0.18, l: 0.85, c: "🌸", scale: 0.32, isParticle: true});
+        }
     }
 
-    // Player BOOP now respects walls (no shooting through walls)
     sprites.forEach(s => {
         if (!s.alive || s.pickup) return;
         let d = Math.hypot(s.x - player.x, s.y - player.y);
-        if (d >= 6 || d < 0.01) return;
+        if (d >= toy.range || d < 0.01) return;
+        
         let angToEnemy = Math.atan2(s.y - player.y, s.x - player.x);
         let angleDiff = Math.abs(angToEnemy - player.dir);
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        if (angleDiff >= 0.85) return;
+        
+        if (!toy.isAoE && angleDiff >= toy.spread) return;
 
-        // Line-of-sight check
         let dirX = (s.x - player.x) / d;
         let dirY = (s.y - player.y) / d;
         let wallDist = raycastWallDistance(dirX, dirY);
-        if (wallDist < d - 0.4) return; // wall blocks the boop
+        if (wallDist < d - 0.4) return;
 
-        s.hp--;
+        s.hp -= toy.dmg;
         hitFlash = 1.0;
         playSound('triangle', 520, 95, 0.19);
         player.combo = Math.min(100, player.combo + 28);
@@ -853,20 +1006,37 @@ function doBoop() {
             playSound('sine', 340, 380, 0.26, -240);
             player.score += (s.type === 'boss' ? 2000 : 220) * player.mult;
             
-            // Track boops and plushies saved
             totalBoops++;
             totalPlushiesSaved++;
             
             spawnParticles(s.x, s.y, "☁️", 14);
-            if (!s.type && Math.random() < 0.35) sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true});
+            if (!s.type) {
+                let healthDropChance = player.hp <= 5 ? 0.60 : 0.25; 
+                let roll = Math.random();
+                
+                if (roll < healthDropChance) {
+                    sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true});
+                } else if (roll < healthDropChance + 0.15) {
+                    sprites.push({x: s.x, y: s.y, e: "📦", pickup: true, alive: true}); 
+                } else if (roll < healthDropChance + 0.20) {
+                    const toysList = ["🍼", "🛏️", "🎵"];
+                    const droppedToy = toysList[Math.floor(Math.random() * toysList.length)];
+                    sprites.push({x: s.x, y: s.y, e: droppedToy, pickup: true, alive: true});
+                }
+            }
             checkWin();
         }
     });
+
+    if (currentToy !== "🪄") toyAmmo[currentToy]--; 
+    if (toyAmmo[currentToy] <= 0 && currentToy !== "🪄") {
+        swapWeapon(); 
+    }
 }
 
 function spawnParticles(x, y, char, count) {
     for(let i=0; i<count; i++) {
-        particles.push({ x, y, vx:(Math.random()-0.5)*0.12, vy:(Math.random()-0.5)*0.12, l: 1.05, c: char });
+        particles.push({ x, y, vx:(Math.random()-0.5)*0.12, vy:(Math.random()-0.5)*0.12, l: 1.05, c: char, isParticle: true });
     }
 }
 
@@ -897,12 +1067,9 @@ function showEnd(msg) {
     const isWin = msg.includes("VICTORY");
     overlay.style.borderColor = isWin ? "var(--sky)" : "var(--hot-pink)";
     
-    let highScore = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
     let currentScore = Math.floor(player.score);
-    if (currentScore > highScore) { 
-        localStorage.setItem('sfwFpsHiScore', currentScore); 
-        highScore = currentScore; 
-    }
+    saveScore(currentScore); 
+    let highScore = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
     
     overlay.style.display = 'flex';
     document.getElementById('status-msg').innerText = msg;
@@ -910,9 +1077,21 @@ function showEnd(msg) {
     let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
     if (isWin) {
         const finalCombo = Math.floor(highestCombo);
+
+        let favWeapon = "🪄";
+        let maxUses = -1;
+        for (let w in weaponUsage) {
+            if (weaponUsage[w] > maxUses) {
+                maxUses = weaponUsage[w];
+                favWeapon = w;
+            }
+        }
+        let weaponName = TOYS[favWeapon].name;
+
         statsHTML += `<br><br><span style="color:var(--sky);">🪄 Total Boops: ${totalBoops}</span>`;
         statsHTML += `<br><span style="color:#ffcc00;">🔥 Highest Combo: ${finalCombo}%</span>`;
         statsHTML += `<br><span style="color:var(--hot-pink);">🧸 Plushies Saved: ${totalPlushiesSaved}</span>`;
+        statsHTML += `<br><span style="color:#b28dff;">⭐ Most Used: ${favWeapon} ${weaponName}</span>`;
     }
     document.getElementById('final-stats').innerHTML = statsHTML;
     
@@ -932,16 +1111,7 @@ function update() {
     if (attackAnim > 0) attackAnim -= 0.12;
     if (shake > 0) shake -= 0.12;
 
-    let isSprinting = keys['ShiftLeft'];
-    let rotSpeed = 0.045;
-    if (keys['KeyA']) player.dir -= rotSpeed;
-    if (keys['KeyD']) player.dir += rotSpeed;
-
-    let joyDist = joyActive ? Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS : 0;
-    if (joyDist > 0.68) isSprinting = true;
-    let moveSpeed = isSprinting ? 0.085 : 0.038;
     const map = MAPS[levelIdx].m;
-
     const canMove = (x, y) => {
         let nx = Math.floor(x), ny = Math.floor(y);
         if (!map[ny] || map[ny][nx] === undefined) return false;
@@ -949,32 +1119,74 @@ function update() {
         return map[ny][nx] === 0;
     };
 
-    isMoving = false;
-    let dx = Math.cos(player.dir) * moveSpeed; let dy = Math.sin(player.dir) * moveSpeed;
-    if (keys['KeyW']) { if (canMove(player.x + dx, player.y)) { player.x += dx; isMoving = true; } if (canMove(player.x, player.y + dy)) { player.y += dy; isMoving = true; } }
-    if (keys['KeyS']) { if (canMove(player.x - dx, player.y)) { player.x -= dx; isMoving = true; } if (canMove(player.x, player.y - dy)) { player.y -= dy; isMoving = true; } }
+    // Passive Untouched Bonus
+    let untouchedSecs = (Date.now() - lastDamageTime) / 1000;
+    if (untouchedSecs > 5 && player.hp > 0 && !levelTransitioning) {
+        player.score += untouchedSecs * 0.05; 
+    }
 
-    if (joyActive) {
-        let fwd = joyForward * moveSpeed * 1.05;
-        player.dir += joyTurn * 0.085;
-        if (fwd > 0.01 || fwd < -0.01) {
-            let fwdDx = Math.cos(player.dir) * fwd; let fwdDy = Math.sin(player.dir) * fwd;
-            if (canMove(player.x + fwdDx, player.y)) player.x += fwdDx;
-            if (canMove(player.x, player.y + fwdDy)) player.y += fwdDy;
-            isMoving = true;
+    // Dodge Button UI Cooldown
+    if (Date.now() - lastDodgeTime < 1000) {
+        dodgeBtn.style.opacity = 0.4;
+        dodgeBtn.style.filter = "grayscale(100%)";
+    } else {
+        dodgeBtn.style.opacity = 1;
+        dodgeBtn.style.filter = "none";
+    }
+
+    // Turning is always active
+    let rotSpeed = 0.045;
+    if (keys['KeyA']) player.dir -= rotSpeed;
+    if (keys['KeyD']) player.dir += rotSpeed;
+    if (joyActive) player.dir += joyTurn * 0.085;
+
+    isMoving = false;
+
+    // Dodge forced movement
+    if (dodgeTime > 0) {
+        dodgeTime--;
+        if (canMove(player.x + dodgeDx, player.y)) player.x += dodgeDx;
+        if (canMove(player.x, player.y + dodgeDy)) player.y += dodgeDy;
+        isMoving = true;
+    } else {
+        isDodging = false;
+        
+        let isSprinting = keys['ShiftLeft'];
+        let joyDist = joyActive ? Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS : 0;
+        if (joyDist > 0.68) isSprinting = true;
+        let moveSpeed = isSprinting ? 0.085 : 0.038;
+        
+        let dx = Math.cos(player.dir) * moveSpeed; let dy = Math.sin(player.dir) * moveSpeed;
+        if (keys['KeyW']) { if (canMove(player.x + dx, player.y)) { player.x += dx; isMoving = true; } if (canMove(player.x, player.y + dy)) { player.y += dy; isMoving = true; } }
+        if (keys['KeyS']) { if (canMove(player.x - dx, player.y)) { player.x -= dx; isMoving = true; } if (canMove(player.x, player.y - dy)) { player.y -= dy; isMoving = true; } }
+
+        if (joyActive) {
+            let fwd = joyForward * moveSpeed * 1.05;
+            if (fwd > 0.01 || fwd < -0.01) {
+                let fwdDx = Math.cos(player.dir) * fwd; let fwdDy = Math.sin(player.dir) * fwd;
+                if (canMove(player.x + fwdDx, player.y)) player.x += fwdDx;
+                if (canMove(player.x, player.y + fwdDy)) player.y += fwdDy;
+                isMoving = true;
+            }
         }
     }
 
-    if (isMoving) bob += isSprinting ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
-    vignette.style.opacity = player.hp <= 5 ? (0.45 + Math.sin(Date.now() * 0.06) * 0.45) : 0;
+    if (isMoving) bob += (keys['ShiftLeft'] || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
+    
+    // Vignette handles Dodge flash + low HP red flash
+    vignette.style.background = isDodging ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" : "radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%)";
+    vignette.style.opacity = isDodging ? 1 : (player.hp <= 5 ? (0.45 + Math.sin(Date.now() * 0.06) * 0.45) : 0);
+    
     player.combo = Math.max(0, player.combo - 0.12);
     player.mult = Math.floor(player.combo / 20) + 1;
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
-
     if (player.combo > highestCombo) highestCombo = player.combo;
 
     document.getElementById('hp-display').innerText = `❤️ x${Math.max(0, Math.floor(player.hp))}`;
-    document.getElementById('score-display').innerText = `✨ ${Math.floor(player.score)}`;
+    
+    let bonusText = untouchedSecs > 5 ? ` 🛡️+${Math.floor(untouchedSecs)}` : "";
+    document.getElementById('score-display').innerText = `✨ ${Math.floor(player.score)}${bonusText}`;
+    
     document.getElementById('hi-display').innerText = `🏆 ${localStorage.getItem('sfwFpsHiScore') || 0}`;
     document.getElementById('mult-display').innerText = `x${player.mult}`;
     document.getElementById('combo-fill').style.width = player.combo + "%";
@@ -1010,7 +1222,28 @@ function update() {
         if (!s.alive) return;
         if (s.atkTimer > 0) s.atkTimer -= 16;
         let d = Math.sqrt((s.x-player.x)**2 + (s.y-player.y)**2);
-        if (s.pickup && d < 0.6) { s.alive = false; player.hp = Math.min(45, player.hp + 5); playSound('sine', 1180, 55, 0.27); checkWin(); }
+        
+        if (s.pickup && d < 0.6) { 
+            s.alive = false; 
+            playSound('sine', 1180, 55, 0.27); 
+            
+            if (s.e === "🧁") {
+                player.hp = Math.min(45, player.hp + 5); 
+            } else if (s.e === "📦") {
+                toyAmmo["🍼"] += 20;
+                toyAmmo["🛏️"] += 5;
+                toyAmmo["🎵"] += 1;
+                hitFlash = 0.5;
+                playSound('sine', 1400, 100, 0.2);
+            } else if (TOYS[s.e]) {
+                unlockedToys[s.e] = true;
+                currentToy = s.e;
+                let ammoAmount = s.e === "🍼" ? 40 : (s.e === "🛏️" ? 10 : 3);
+                toyAmmo[s.e] += ammoAmount;
+                hitFlash = 0.5; 
+            }
+            checkWin(); 
+        }
         
         if (s.type === 'boss') {
             if (!s.isPhase2 && s.hp <= s.maxHp / 2) {
@@ -1021,16 +1254,21 @@ function update() {
 
             if (s.isPhase2) {
                 let chargeTime = Date.now() - s.phase2StartTime;
-                
-                if (Math.random() < 0.3) {
-                    spawnParticles(s.x + (Math.random()-0.5), s.y + (Math.random()-0.5), "⚡", 1);
-                }
+                if (Math.random() < 0.3) spawnParticles(s.x + (Math.random()-0.5), s.y + (Math.random()-0.5), "⚡", 1);
 
                 if (chargeTime >= 5000) {
-                    player.hp = 0;
-                    shake = 2.0;
-                    playSound('triangle', 100, 600, 0.5, -100);
-                    showEnd("MEGA BOOPED! 🧸⚡");
+                    s.phase2StartTime = Date.now(); 
+                    if (isDodging) {
+                        playSound('sine', 1200, 200, 0.3, -400);
+                        spawnParticles(player.x, player.y, "✨", 25);
+                        player.score += 500 * player.mult;
+                        hitFlash = 0.8;
+                    } else {
+                        player.hp = 0; shake = 2.0;
+                        lastDamageTime = Date.now();
+                        playSound('triangle', 100, 600, 0.5, -100);
+                        showEnd("MEGA BOOPED! 🧸⚡");
+                    }
                 }
             } else {
                 s.strafeTimer++; if (s.strafeTimer > 60) { s.strafeDir *= -1; s.strafeTimer = 0; }
@@ -1042,41 +1280,25 @@ function update() {
                 }
             }
         } else if (!s.pickup) {
-            
-            // --- ENEMY CHASE & SEPARATION AI ---
             if (d < 12 && d > 0.5) { 
-                // Speed scales based on difficulty
                 let enemySpeed = 0.012 * (difficultyMult === 1.0 ? 0.8 : (difficultyMult === 1.5 ? 1.0 : 1.3));
-                let dirX = (player.x - s.x) / d;
-                let dirY = (player.y - s.y) / d;
+                let dirX = (player.x - s.x) / d; let dirY = (player.y - s.y) / d;
                 
-                // Anti-clumping: Push away from other nearby plushies
                 let sepX = 0, sepY = 0;
                 sprites.forEach(other => {
                     if (other !== s && other.alive && !other.pickup) {
                         let od = Math.hypot(s.x - other.x, s.y - other.y);
-                        if (od < 0.6 && od > 0.01) {
-                            sepX += (s.x - other.x) * 0.03;
-                            sepY += (s.y - other.y) * 0.03;
-                        }
+                        if (od < 0.6 && od > 0.01) { sepX += (s.x - other.x) * 0.03; sepY += (s.y - other.y) * 0.03; }
                     }
                 });
 
-                let finalX = (dirX * enemySpeed) + sepX;
-                let finalY = (dirY * enemySpeed) + sepY;
+                let finalX = (dirX * enemySpeed) + sepX; let finalY = (dirY * enemySpeed) + sepY;
+                const canEnemyMove = (ex, ey) => { let nx = Math.floor(ex), ny = Math.floor(ey); return map[ny] && map[ny][nx] === 0; };
 
-                // Dedicated enemy collision so they don't accidentally step on the exit portal (9)
-                const canEnemyMove = (ex, ey) => {
-                    let nx = Math.floor(ex), ny = Math.floor(ey);
-                    return map[ny] && map[ny][nx] === 0;
-                };
-
-                // Apply movement with simple wall sliding
                 if (canEnemyMove(s.x + finalX, s.y)) s.x += finalX;
                 if (canEnemyMove(s.x, s.y + finalY)) s.y += finalY;
             }
 
-            // Existing shooting logic
             if (d < 8 && Date.now() - s.lastShot > 3900) {
                 let a = Math.atan2(player.y-s.y, player.x-s.x);
                 projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150});
@@ -1085,32 +1307,31 @@ function update() {
         }
     });
 
-    // Enemy bullets now use sub-step movement + proper wall collision (no more tunneling through walls)
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         let removed = false;
         const steps = 4;
-        const stepVx = p.vx / steps;
-        const stepVy = p.vy / steps;
+        const stepVx = p.vx / steps; const stepVy = p.vy / steps;
         for (let k = 0; k < steps && !removed; k++) {
-            p.x += stepVx;
-            p.y += stepVy;
+            p.x += stepVx; p.y += stepVy;
             if (Math.hypot(p.x - player.x, p.y - player.y) < 0.45) {
-                const damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
-                player.hp -= damage;
-                player.combo = 0; shake = 1.1;
-                playSound('triangle', 410, 135, 0.23, -110);
-                if (player.hp <= 0) showEnd("BOOPED! 🧸");
-                removed = true;
+                if (isDodging) {
+                    spawnParticles(p.x, p.y, "💨", 3);
+                    removed = true;
+                } else {
+                    const damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
+                    player.hp -= damage;
+                    player.combo = 0; shake = 1.1;
+                    lastDamageTime = Date.now();
+                    playSound('triangle', 410, 135, 0.23, -110);
+                    if (player.hp <= 0) showEnd("BOOPED! 🧸");
+                    removed = true;
+                }
             }
-            if (!removed && map[Math.floor(p.y)]?.[Math.floor(p.x)] === 1) {
-                removed = true;
-            }
+            if (!removed && map[Math.floor(p.y)]?.[Math.floor(p.x)] === 1) removed = true;
         }
         p.l -= 1;
-        if (removed || p.l <= 0) {
-            projectiles.splice(i, 1);
-        }
+        if (removed || p.l <= 0) projectiles.splice(i, 1);
     }
 
     particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.l -= 0.035; if (p.l <= 0) particles.splice(i, 1); });
@@ -1177,20 +1398,30 @@ function draw() {
         ctx.globalAlpha = 1;
     }
 
-    let itms = [...sprites.filter(s=>s.alive), ...projectiles.map(p=>({x:p.x, y:p.y, e:"💗", scale:0.38})), ...particles.map(p=>({x:p.x, y:p.y, e:p.c, scale:(p.scale||0.3)*p.l, l:p.l}))];
+    let itms = [
+        ...sprites.filter(s=>s.alive), 
+        ...projectiles.map(p=>({x:p.x, y:p.y, e:"💗", scale:0.65})), 
+        ...particles.map(p=>({x:p.x, y:p.y, e:p.c, scale:(p.scale||0.4), l:p.l, isParticle: true}))
+    ];
     
     itms.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2)).forEach(s => {
         let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
         let ang = Math.atan2(dy, dx) - player.dir;
         while (ang < -Math.PI) ang += Math.PI*2; while (ang > Math.PI) ang -= Math.PI*2;
         
-        if (Math.abs(ang) < 1.1) {
+        if (Math.abs(ang) < 2.0) {
             let sx = (ang / 1.2 + 0.5) * 400;
             let zIndex = Math.max(0, Math.min(399, Math.floor(sx)));
             
             if (zBuf[zIndex] > dist) {
-                let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.type === 'boss' ? 2.6 : 1));
-                ctx.globalAlpha = s.l || 1;
+                let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.pickup ? 1.4 : (s.type === 'boss' ? 2.6 : 1)));
+                
+                if (s.l !== undefined) {
+                    ctx.globalAlpha = s.l > 0.2 ? 1 : s.l * 5;
+                } else {
+                    ctx.globalAlpha = 1;
+                }
+                
                 if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
                 else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 150 - sz/2, sz, sz);
                 else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 150 - sz/2, sz, sz);
@@ -1198,33 +1429,69 @@ function draw() {
                 else if (s.e === "BOSS_FINAL") {
                     let bossImg = assets.bossIdle;
                     let sxOffset = 0;
-                    
-                    if (s.isPhase2) {
-                        bossImg = assets.bossPhase2;
-                        sxOffset = (Math.random() - 0.5) * 8; 
-                    } else if (s.atkTimer > 0) {
-                        bossImg = assets.bossAtk;
-                    }
-                    
+                    if (s.isPhase2) { bossImg = assets.bossPhase2; sxOffset = (Math.random() - 0.5) * 8; } 
+                    else if (s.atkTimer > 0) bossImg = assets.bossAtk;
                     ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 150 - sz/2, sz, sz);
                 }
-                else { ctx.font = `${sz}px serif`; ctx.textAlign = "center"; ctx.fillText(s.e || "✨", sx, 150 + sz/2); }
+                else { 
+                    if (!s.isParticle) {
+                        ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+                        ctx.shadowBlur = Math.max(4, sz * 0.15);
+                    }
+                    ctx.font = `${sz}px serif`; 
+                    ctx.textAlign = "center"; 
+                    ctx.fillText(s.e || "✨", sx, 150 + sz/2); 
+                    if (!s.isParticle) {
+                        ctx.shadowBlur = 0;
+                        ctx.shadowColor = "transparent";
+                    }
+                }
                 ctx.globalAlpha = 1;
             }
         }
     });
 
-    if (hitFlash > 0) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${hitFlash * 0.3})`;
-        ctx.fillRect(0, 0, 400, 300);
-        hitFlash -= 0.1;
+    if (hitFlash > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${hitFlash * 0.3})`; ctx.fillRect(0, 0, 400, 300); hitFlash -= 0.1; }
+
+    ctx.restore(); 
+    ctx.save();
+    
+    let wandSway = Math.cos(bob * 0.5) * 16; 
+    let wandAtkY = 0;
+    let wandAtkX = 0;
+    let wandRot = 0;
+
+    if (attackAnim > 0) {
+        let t = 1.0 - attackAnim; 
+        if (currentToy === "🪄") {
+            wandAtkY = Math.sin(t * Math.PI) * -48;
+        } else if (currentToy === "🍼") {
+            wandAtkY = Math.sin(t * Math.PI * 4) * -15; 
+        } else if (currentToy === "🛏️") {
+            wandAtkX = Math.sin(t * Math.PI) * 150 - 75; 
+            wandAtkY = Math.sin(t * Math.PI) * -40;
+            wandRot = Math.sin(t * Math.PI) * 1.5; 
+        } else if (currentToy === "🎵") {
+            wandAtkY = Math.sin(t * Math.PI) * -20;
+        }
     }
 
-    ctx.restore(); ctx.save();
-    let wandSway = Math.cos(bob * 0.5) * 16; let wandAtkY = Math.sin(attackAnim * Math.PI) * -48;
-    ctx.font = "145px serif"; ctx.textAlign = "center";
-    ctx.fillText("🪄", 200 + wandSway, 275 + currentBob + wandAtkY);
+    ctx.translate(200 + wandSway + wandAtkX, 275 + currentBob + wandAtkY);
+    ctx.rotate(wandRot);
+    ctx.font = "145px serif"; 
+    ctx.textAlign = "center";
+    ctx.fillText(currentToy, 0, 0);
     ctx.restore();
+
+    ctx.save();
+    if (currentToy !== "🪄") {
+        ctx.font = "24px 'Arial Rounded MT Bold', sans-serif";
+        ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
+        ctx.strokeText(toyAmmo[currentToy], 250 + wandSway, 250 + currentBob);
+        ctx.fillText(toyAmmo[currentToy], 250 + wandSway, 250 + currentBob);
+    }
+    ctx.restore();
+
     drawMinimap();
 }
 
@@ -1241,14 +1508,7 @@ function drawMinimap() {
     mCtx.fillStyle = "#44ff88"; mCtx.beginPath(); mCtx.arc(player.x*cw, player.y*ch, 3.5, 0, Math.PI*2); mCtx.fill();
 }
 
-function loop() {
-    if (gameActive && !paused) {
-        update();
-        draw();
-    }
-    requestAnimationFrame(loop);
-}
-
+function loop() { if (gameActive && !paused) { update(); draw(); } requestAnimationFrame(loop); }
 loop();
 
 window.addEventListener('resize', () => { document.documentElement.style.height = '100dvh'; });
