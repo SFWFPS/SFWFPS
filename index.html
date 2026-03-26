@@ -653,6 +653,7 @@ let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, is
 let levelTransitioning = false, portalActive = false;  
 let hitFlash = 0;
 let difficultyMult = 1.5;
+let currentMap; // cloned per level to prevent permanent mutation
 
 // --- TOY BOX SYSTEM ---
 const TOYS = {
@@ -661,6 +662,8 @@ const TOYS = {
     "🛏️": { name: "Heavy Pillow", dmg: 3, range: 4, cooldown: 600, spread: 1.2, isAoE: false },
     "🎵": { name: "Lullaby Box", dmg: 2, range: 5, cooldown: 1000, spread: Math.PI * 2, isAoE: true }
 };
+
+const TOY_ORDER = ["🪄", "🍼", "🛏️", "🎵"]; // used for smart cycling
 
 let currentToy = "🪄";
 let unlockedToys = { "🪄": true, "🍼": false, "🛏️": false, "🎵": false };
@@ -689,6 +692,9 @@ let joyPointerId = null;
 let turnActive = false, lastTurnClientX = 0, turnPointerId = null;
 const viewportEl = document.getElementById('viewport');
 
+// iOS detection for reliable fullscreen
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 function togglePause() {
     if (!gameActive || isLoading) return;
     paused = !paused;
@@ -704,18 +710,28 @@ function toggleFullscreen() {
     const docEl = doc.documentElement;
     const vp = document.getElementById('viewport');
 
-    const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
-    const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+    if (isIOS()) {
+        // iOS Safari restricts true fullscreen → always use CSS fallback
+        applyiOSFullscreenFallback(vp);
+        return;
+    }
 
-    if (requestFullScreen) {
-        if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-            requestFullScreen.call(docEl).catch(err => {
-                applyiOSFullscreenFallback(vp);
-            });
-        } else {
-            if (cancelFullScreen) cancelFullScreen.call(doc);
-            vp.classList.remove('ios-fullscreen-fix');
-        }
+    // Native fullscreen for non-iOS
+    const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || 
+                      docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+    const exitFS = doc.exitFullscreen || doc.webkitExitFullscreen || 
+                   doc.mozCancelFullScreen || doc.msExitFullscreen;
+
+    const isCurrentlyFS = !!(doc.fullscreenElement || doc.webkitFullscreenElement || 
+                           doc.mozFullScreenElement || doc.msFullscreenElement);
+
+    if (requestFS && !isCurrentlyFS) {
+        requestFS.call(docEl).catch(() => {
+            applyiOSFullscreenFallback(vp);
+        });
+    } else if (exitFS && isCurrentlyFS) {
+        exitFS.call(doc);
+        vp.classList.remove('ios-fullscreen-fix');
     } else {
         applyiOSFullscreenFallback(vp);
     }
@@ -770,13 +786,18 @@ function initGame() {
 
 function loadLevel(idx) {
     if (levelTransitioning || idx >= MAPS.length) return;
-    levelTransitioning = true; isLoading = true; levelIdx = idx; const l = MAPS[idx];
+    levelTransitioning = true; isLoading = true; levelIdx = idx; 
+    const l = MAPS[idx];
+    
+    // CRITICAL FIX: Clone map so portals don't persist across restarts
+    currentMap = l.m.map(row => [...row]);
+
     player.x = l.start[0]; player.y = l.start[1]; portalActive = false;  
 
     const qtyMult = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
     sprites = [];
 
-    const mapData = l.m;
+    const mapData = currentMap;
     let floorTiles = [];
     for (let y = 0; y < mapData.length; y++) {
         for (let x = 0; x < mapData[y].length; x++) {
@@ -826,24 +847,34 @@ function showLevelCard(name, sub) {
     card.style.opacity = 1; setTimeout(() => card.style.opacity = 0, 2500);
 }
 
+// FIXED: Smart weapon cycling that prevents getting stuck on empty weapons
 function swapWeapon(index) {
-    const toysList = ["🪄", "🍼", "🛏️", "🎵"];
     if (index !== undefined) {
-        if (unlockedToys[toysList[index]] && (toyAmmo[toysList[index]] > 0 || toysList[index] === "🪄")) {
-            currentToy = toysList[index];
+        // Keyboard direct select (Digit 1-4)
+        const target = TOY_ORDER[index];
+        if (target && unlockedToys[target] && (toyAmmo[target] > 0 || target === "🪄")) {
+            currentToy = target;
             playSound('sine', 800, 50, 0.1);
         }
-    } else {
-        let curIdx = toysList.indexOf(currentToy);
-        for (let i=1; i<=4; i++) {
-            let nextIdx = (curIdx + i) % 4;
-            if (unlockedToys[toysList[nextIdx]] && (toyAmmo[toysList[nextIdx]] > 0 || toysList[nextIdx] === "🪄")) {
-                currentToy = toysList[nextIdx];
-                playSound('sine', 800, 50, 0.1);
-                break;
-            }
-        }
+        return;
     }
+
+    // Cycle button (🔄) - now intelligently skips empty ammo weapons
+    const validToys = TOY_ORDER.filter(t => unlockedToys[t] && (toyAmmo[t] > 0 || t === "🪄"));
+    if (validToys.length === 0) {
+        currentToy = "🪄";
+        return;
+    }
+
+    let curIdx = validToys.indexOf(currentToy);
+    if (curIdx === -1) {
+        currentToy = validToys[0]; // fallback to first valid (usually wand)
+        return;
+    }
+
+    const nextIdx = (curIdx + 1) % validToys.length;
+    currentToy = validToys[nextIdx];
+    playSound('sine', 800, 50, 0.1);
 }
 
 function doDodge() {
@@ -983,7 +1014,7 @@ function doBoop() {
         let dirX = (s.x - player.x) / d;
         let dirY = (s.y - player.y) / d;
         
-        const map = MAPS[levelIdx].m;
+        const map = currentMap;
         let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
         const deltaDistX = dirX === 0 ? 999999 : Math.abs(1 / dirX);
         const deltaDistY = dirY === 0 ? 999999 : Math.abs(1 / dirY);
@@ -992,7 +1023,6 @@ function doBoop() {
         let sideDistY = dirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1.0 - player.y) * deltaDistY;
         
         let wallDist = 9999; let steps = 0; let side = 0;
-        // ANTI-FREEZE: strict limit of 60 steps for raycast checks
         while (steps < 60) {
             steps++;
             if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
@@ -1057,9 +1087,8 @@ function checkWin() {
             if (levelIdx === 1) { exitX = 6.5; exitY = 1.5; }
             if (levelIdx === 2) { exitX = 7.5; exitY = 3.5; }
             if (levelIdx === 3) { exitX = 2.5; exitY = 0.5; } 
-            const map = MAPS[levelIdx].m;
             const tx = Math.floor(exitX), ty = Math.floor(exitY);
-            if (map[ty] && map[ty][tx] !== undefined) map[ty][tx] = 9;
+            if (currentMap[ty] && currentMap[ty][tx] !== undefined) currentMap[ty][tx] = 9;
             portalActive = true; 
             playSound('sine', 880, 120, 0.32);
             setTimeout(() => playSound('sine', 1320, 250, 0.28), 80);
@@ -1119,7 +1148,7 @@ function update() {
     if (attackAnim > 0) attackAnim -= 0.12;
     if (shake > 0) shake -= 0.12;
 
-    const map = MAPS[levelIdx].m;
+    const map = currentMap;
     const canMove = (x, y) => {
         let nx = Math.floor(x), ny = Math.floor(y);
         if (!map[ny] || map[ny][nx] === undefined) return false;
@@ -1353,7 +1382,6 @@ function update() {
 }
 
 function updatePortalTexture() {
-    // ANTI-FREEZE: Ensure image is fully loaded with valid dimensions before parsing
     if (!assets.portal.complete || assets.portal.naturalWidth === 0) return;
     
     let t = Date.now() * 0.002; let c = 128; pCtx.fillStyle = "#0a0515"; pCtx.fillRect(0, 0, 256, 256);
@@ -1385,7 +1413,8 @@ function draw() {
     ctx.fillStyle = cachedSkyGrad; ctx.fillRect(0, -100, 400, 260);
     ctx.fillStyle = cachedFloorGrad; ctx.fillRect(0, 150, 400, 200);
 
-    const map = MAPS[levelIdx].m; const tex = MAPS[levelIdx].tex;
+    const map = currentMap; 
+    const tex = MAPS[levelIdx].tex;
 
     const FOV = 0.66;
     const cosDir = Math.cos(player.dir);
@@ -1408,7 +1437,6 @@ function draw() {
         else { stepY = 1; sideDistY = (mapY + 1.0 - player.y) * deltaDistY; }
 
         let steps = 0;
-        // ANTI-FREEZE: Hard cap raycast loop at 100 steps to prevent infinite loop out of bounds
         while (hit === 0 && steps < 100) {
             steps++;
             if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
@@ -1523,7 +1551,8 @@ function draw() {
 
 function drawMinimap() {
     mCtx.clearRect(0,0,80,80);
-    const map = MAPS[levelIdx].m; const cw = 80 / map[0].length, ch = 80 / map.length;
+    const map = currentMap; 
+    const cw = 80 / map[0].length, ch = 80 / map.length;
     for(let y=0; y<map.length; y++) {
         for(let x=0; x<map[y].length; x++) {
             if (map[y][x] === 1) { mCtx.fillStyle = "rgba(255,255,255,0.25)"; mCtx.fillRect(x*cw, y*ch, cw, ch); } 
