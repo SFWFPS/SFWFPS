@@ -348,7 +348,8 @@
         .overlay { 
             display: none; position: fixed; inset: 0; 
             background: radial-gradient(circle, rgba(45, 27, 46, 0.97) 0%, rgba(0,0,0,0.99) 100%); 
-            z-index: 100; color: white; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 100000; /* CRITICAL FIX: now always above iOS fullscreen fallback */
+            color: white; flex-direction: column; align-items: center; justify-content: center; 
             text-align: center; backdrop-filter: blur(12px);
             border: 6px solid var(--hot-pink); box-shadow: inset 0 0 60px rgba(255, 20, 147, 0.4);
             overflow-y: auto;
@@ -451,7 +452,7 @@
         </div>
     </div>
 
-    <div id="scores-menu" class="overlay" style="z-index: 250 !important;">
+    <div id="scores-menu" class="overlay" style="z-index: 250000 !important;">
         <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">TOP 10 SLEEPERS</h1>
         <div id="scores-list"></div>
         <div class="overlay-btns">
@@ -460,7 +461,7 @@
     </div>
 
     <div id="viewport">
-        <button id="pause-toggle" class="util-btn" onclick="togglePause()">⏸️</button>
+        <button id="pause-toggle" class="util-btn">⏸️</button>
         <button id="fullscreen-toggle" class="util-btn">🖥️</button>
 
         <canvas id="c"></canvas>
@@ -653,9 +654,8 @@ let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, is
 let levelTransitioning = false, portalActive = false;  
 let hitFlash = 0;
 let difficultyMult = 1.5;
-let currentMap; // cloned per level to prevent permanent mutation
+let currentMap;
 
-// --- TOY BOX SYSTEM ---
 const TOYS = {
     "🪄": { name: "Magic Wand", dmg: 1, range: 6, cooldown: 0, spread: 0.85, isAoE: false },
     "🍼": { name: "Warm Milk", dmg: 0.5, range: 8, cooldown: 120, spread: 0.4, isAoE: false },
@@ -663,7 +663,7 @@ const TOYS = {
     "🎵": { name: "Lullaby Box", dmg: 2, range: 5, cooldown: 1000, spread: Math.PI * 2, isAoE: true }
 };
 
-const TOY_ORDER = ["🪄", "🍼", "🛏️", "🎵"]; // used for smart cycling
+const TOY_ORDER = ["🪄", "🍼", "🛏️", "🎵"];
 
 let currentToy = "🪄";
 let unlockedToys = { "🪄": true, "🍼": false, "🛏️": false, "🎵": false };
@@ -672,13 +672,11 @@ let weaponUsage = { "🪄": 0, "🍼": 0, "🛏️": 0, "🎵": 0 };
 let lastBoopTime = 0;
 let lastDamageTime = 0; 
 
-// --- DODGE SYSTEM ---
 let isDodging = false;
 let dodgeTime = 0;
 let lastDodgeTime = 0;
 let dodgeDx = 0, dodgeDy = 0;
 
-// Post-victory stats
 let totalBoops = 0;
 let highestCombo = 0;
 let totalPlushiesSaved = 0;
@@ -692,7 +690,6 @@ let joyPointerId = null;
 let turnActive = false, lastTurnClientX = 0, turnPointerId = null;
 const viewportEl = document.getElementById('viewport');
 
-// iOS detection for reliable fullscreen
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 function togglePause() {
@@ -711,12 +708,10 @@ function toggleFullscreen() {
     const vp = document.getElementById('viewport');
 
     if (isIOS()) {
-        // iOS Safari restricts true fullscreen → always use CSS fallback
         applyiOSFullscreenFallback(vp);
         return;
     }
 
-    // Native fullscreen for non-iOS
     const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || 
                       docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
     const exitFS = doc.exitFullscreen || doc.webkitExitFullscreen || 
@@ -726,9 +721,7 @@ function toggleFullscreen() {
                            doc.mozFullScreenElement || doc.msFullscreenElement);
 
     if (requestFS && !isCurrentlyFS) {
-        requestFS.call(docEl).catch(() => {
-            applyiOSFullscreenFallback(vp);
-        });
+        requestFS.call(docEl).catch(() => applyiOSFullscreenFallback(vp));
     } else if (exitFS && isCurrentlyFS) {
         exitFS.call(doc);
         vp.classList.remove('ios-fullscreen-fix');
@@ -748,6 +741,11 @@ function applyiOSFullscreenFallback(el) {
 
 const fsBtn = document.getElementById('fullscreen-toggle');
 fsBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }, { passive: false });
+fsBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }, { passive: false }); // iOS touch fix
+
+const pauseBtn = document.getElementById('pause-toggle');
+pauseBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); togglePause(); }, { passive: false });
+pauseBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); togglePause(); }, { passive: false });
 
 function selectDifficulty(mult) {
     difficultyMult = mult;
@@ -789,7 +787,6 @@ function loadLevel(idx) {
     levelTransitioning = true; isLoading = true; levelIdx = idx; 
     const l = MAPS[idx];
     
-    // CRITICAL FIX: Clone map so portals don't persist across restarts
     currentMap = l.m.map(row => [...row]);
 
     player.x = l.start[0]; player.y = l.start[1]; portalActive = false;  
@@ -847,10 +844,8 @@ function showLevelCard(name, sub) {
     card.style.opacity = 1; setTimeout(() => card.style.opacity = 0, 2500);
 }
 
-// FIXED: Smart weapon cycling that prevents getting stuck on empty weapons
 function swapWeapon(index) {
     if (index !== undefined) {
-        // Keyboard direct select (Digit 1-4)
         const target = TOY_ORDER[index];
         if (target && unlockedToys[target] && (toyAmmo[target] > 0 || target === "🪄")) {
             currentToy = target;
@@ -859,7 +854,6 @@ function swapWeapon(index) {
         return;
     }
 
-    // Cycle button (🔄) - now intelligently skips empty ammo weapons
     const validToys = TOY_ORDER.filter(t => unlockedToys[t] && (toyAmmo[t] > 0 || t === "🪄"));
     if (validToys.length === 0) {
         currentToy = "🪄";
@@ -868,7 +862,7 @@ function swapWeapon(index) {
 
     let curIdx = validToys.indexOf(currentToy);
     if (curIdx === -1) {
-        currentToy = validToys[0]; // fallback to first valid (usually wand)
+        currentToy = validToys[0];
         return;
     }
 
@@ -1156,13 +1150,11 @@ function update() {
         return map[ny][nx] === 0;
     };
 
-    // Passive Untouched Bonus
     let untouchedSecs = (Date.now() - lastDamageTime) / 1000;
     if (untouchedSecs > 5 && player.hp > 0 && !levelTransitioning) {
         player.score += untouchedSecs * 0.05; 
     }
 
-    // Dodge Button UI Cooldown
     if (Date.now() - lastDodgeTime < 1000) {
         dodgeBtn.style.opacity = 0.4;
         dodgeBtn.style.filter = "grayscale(100%)";
@@ -1171,7 +1163,6 @@ function update() {
         dodgeBtn.style.filter = "none";
     }
 
-    // Turning is always active
     let rotSpeed = 0.045;
     if (keys['KeyA']) player.dir -= rotSpeed;
     if (keys['KeyD']) player.dir += rotSpeed;
@@ -1179,7 +1170,6 @@ function update() {
 
     isMoving = false;
 
-    // Dodge forced movement
     if (dodgeTime > 0) {
         dodgeTime--;
         if (canMove(player.x + dodgeDx, player.y)) player.x += dodgeDx;
@@ -1210,7 +1200,6 @@ function update() {
 
     if (isMoving) bob += (keys['ShiftLeft'] || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
     
-    // Vignette handles Dodge flash + low HP red flash
     vignette.style.background = isDodging ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" : "radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%)";
     vignette.style.opacity = isDodging ? 1 : (player.hp <= 5 ? (0.45 + Math.sin(Date.now() * 0.06) * 0.45) : 0);
     
@@ -1345,7 +1334,6 @@ function update() {
         }
     });
 
-    // ANTI-FREEZE: Safe reverse loop for array splicing during update
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         let removed = false;
@@ -1373,7 +1361,6 @@ function update() {
         if (removed || p.l <= 0) projectiles.splice(i, 1);
     }
 
-    // ANTI-FREEZE: Safe reverse loop for array splicing during update
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
         p.x += p.vx; p.y += p.vy; p.l -= 0.035; 
