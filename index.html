@@ -59,6 +59,7 @@
             color: white; 
             overflow-y: auto;
             padding: 20px;
+            pointer-events: auto; /* ensure touch works */
         }
 
         .logo-container { text-align: center; margin-bottom: 30px; pointer-events: none; }
@@ -93,6 +94,7 @@
             width: 280px;
             margin: 8px auto;
             display: block;
+            pointer-events: auto;
         }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .start-btn:active, .diff-btn:active { transform: scale(0.92); }
@@ -348,7 +350,7 @@
         .overlay { 
             display: none; position: fixed; inset: 0; 
             background: radial-gradient(circle, rgba(45, 27, 46, 0.97) 0%, rgba(0,0,0,0.99) 100%); 
-            z-index: 100000; /* CRITICAL FIX: now always above iOS fullscreen fallback */
+            z-index: 100000; 
             color: white; flex-direction: column; align-items: center; justify-content: center; 
             text-align: center; backdrop-filter: blur(12px);
             border: 6px solid var(--hot-pink); box-shadow: inset 0 0 60px rgba(255, 20, 147, 0.4);
@@ -431,22 +433,22 @@
         <div id="difficulty-container" style="text-align:center; margin-bottom: 30px; width: 100%; max-width: 340px;">
             <h2 style="color:#ff69b4; margin: 0 0 20px 0; font-size: 22px; text-shadow: 0 0 15px var(--hot-pink);">CHOOSE YOUR SLEEPINESS LEVEL</h2>
             
-            <button onclick="selectDifficulty(1.0)" class="diff-btn">
+            <button id="easy-btn" class="diff-btn">
                 I'm Not Even Tired<br>
                 <small>Easy • 1 damage • 1.0× health • 1× enemies</small>
             </button>
             
-            <button onclick="selectDifficulty(1.5)" class="diff-btn" style="background: var(--hot-pink); animation: pulse 1.8s infinite;">
+            <button id="normal-btn" class="diff-btn" style="background: var(--hot-pink); animation: pulse 1.8s infinite;">
                 A Little Eepy<br>
                 <small>Normal • 2 damage • 1.5× health • 2× enemies</small>
             </button>
             
-            <button onclick="selectDifficulty(2.0)" class="diff-btn" style="background: #9c1f5f;">
+            <button id="hard-btn" class="diff-btn" style="background: #9c1f5f;">
                 Naptime<br>
                 <small>Hard • 3 damage • 2.0× health • 3× enemies</small>
             </button>
 
-            <button onclick="showScoresMenu()" class="diff-btn" style="background: #2d1b2e; border: 2px solid var(--sky); margin-top: 15px;">
+            <button id="scores-start-btn" class="diff-btn" style="background: #2d1b2e; border: 2px solid var(--sky); margin-top: 15px;">
                 High Scores 🏆
             </button>
         </div>
@@ -739,9 +741,58 @@ function applyiOSFullscreenFallback(el) {
     }
 }
 
+// CRITICAL: Attach reliable touch + click handlers for iOS and all touch devices
+function attachStartMenuHandlers() {
+    // Difficulty buttons
+    document.getElementById('easy-btn').addEventListener('click', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        selectDifficulty(1.0);
+    });
+    document.getElementById('easy-btn').addEventListener('touchstart', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        selectDifficulty(1.0);
+    }, { passive: false });
+
+    document.getElementById('normal-btn').addEventListener('click', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        selectDifficulty(1.5);
+    });
+    document.getElementById('normal-btn').addEventListener('touchstart', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        selectDifficulty(1.5);
+    }, { passive: false });
+
+    document.getElementById('hard-btn').addEventListener('click', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        selectDifficulty(2.0);
+    });
+    document.getElementById('hard-btn').addEventListener('touchstart', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        selectDifficulty(2.0);
+    }, { passive: false });
+
+    // High Scores button
+    document.getElementById('scores-start-btn').addEventListener('click', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showScoresMenu();
+    });
+    document.getElementById('scores-start-btn').addEventListener('touchstart', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showScoresMenu();
+    }, { passive: false });
+}
+
 const fsBtn = document.getElementById('fullscreen-toggle');
 fsBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }, { passive: false });
-fsBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }, { passive: false }); // iOS touch fix
+fsBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }, { passive: false });
 
 const pauseBtn = document.getElementById('pause-toggle');
 pauseBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); togglePause(); }, { passive: false });
@@ -1551,6 +1602,9 @@ function drawMinimap() {
 }
 
 function loop() { if (gameActive && !paused) { update(); draw(); } requestAnimationFrame(loop); }
+
+// === FINAL INITIALIZATION ===
+attachStartMenuHandlers();   // ← This fixes start menu on ALL touch devices including iPhone
 loop();
 
 window.addEventListener('resize', () => { document.documentElement.style.height = '100dvh'; });
