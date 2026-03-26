@@ -1041,10 +1041,47 @@ function update() {
                     s.lastShot = Date.now(); s.atkTimer = 480;
                 }
             }
-        } else if (!s.pickup && d < 8 && Date.now() - s.lastShot > 3900) {
-            let a = Math.atan2(player.y-s.y, player.x-s.x);
-            projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150});
-            s.lastShot = Date.now(); s.atkTimer = 480;
+        } else if (!s.pickup) {
+            
+            // --- ENEMY CHASE & SEPARATION AI ---
+            if (d < 12 && d > 0.5) { 
+                // Speed scales based on difficulty
+                let enemySpeed = 0.012 * (difficultyMult === 1.0 ? 0.8 : (difficultyMult === 1.5 ? 1.0 : 1.3));
+                let dirX = (player.x - s.x) / d;
+                let dirY = (player.y - s.y) / d;
+                
+                // Anti-clumping: Push away from other nearby plushies
+                let sepX = 0, sepY = 0;
+                sprites.forEach(other => {
+                    if (other !== s && other.alive && !other.pickup) {
+                        let od = Math.hypot(s.x - other.x, s.y - other.y);
+                        if (od < 0.6 && od > 0.01) {
+                            sepX += (s.x - other.x) * 0.03;
+                            sepY += (s.y - other.y) * 0.03;
+                        }
+                    }
+                });
+
+                let finalX = (dirX * enemySpeed) + sepX;
+                let finalY = (dirY * enemySpeed) + sepY;
+
+                // Dedicated enemy collision so they don't accidentally step on the exit portal (9)
+                const canEnemyMove = (ex, ey) => {
+                    let nx = Math.floor(ex), ny = Math.floor(ey);
+                    return map[ny] && map[ny][nx] === 0;
+                };
+
+                // Apply movement with simple wall sliding
+                if (canEnemyMove(s.x + finalX, s.y)) s.x += finalX;
+                if (canEnemyMove(s.x, s.y + finalY)) s.y += finalY;
+            }
+
+            // Existing shooting logic
+            if (d < 8 && Date.now() - s.lastShot > 3900) {
+                let a = Math.atan2(player.y-s.y, player.x-s.x);
+                projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150});
+                s.lastShot = Date.now(); s.atkTimer = 480;
+            }
         }
     });
 
@@ -1147,11 +1184,8 @@ function draw() {
         let ang = Math.atan2(dy, dx) - player.dir;
         while (ang < -Math.PI) ang += Math.PI*2; while (ang > Math.PI) ang -= Math.PI*2;
         
-        // FIX: Increased angle threshold to prevent large sprites from popping out when their center leaves the view cone
         if (Math.abs(ang) < 1.1) {
             let sx = (ang / 1.2 + 0.5) * 400;
-            
-            // FIX: Constrain z-buffer check to array bounds (0 to 399) to stop undefined out-of-bounds flickering
             let zIndex = Math.max(0, Math.min(399, Math.floor(sx)));
             
             if (zBuf[zIndex] > dist) {
