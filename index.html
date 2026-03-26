@@ -535,7 +535,7 @@ let levelTransitioning = false, portalActive = false;
 let hitFlash = 0;
 let difficultyMult = 1.5;
 
-// NEW: Post-victory stats
+// Post-victory stats
 let totalBoops = 0;
 let highestCombo = 0;
 let totalPlushiesSaved = 0;
@@ -783,7 +783,7 @@ document.addEventListener('pointermove', e => {
 });
 document.addEventListener('pointerup', e => { if (turnPointerId === e.pointerId) { turnActive = false; turnPointerId = null; } });
 
-// NEW: Raycast helper to check if a straight line from player to target is blocked by a wall
+// Raycast helper to check if a straight line from player to target is blocked by a wall
 function raycastWallDistance(dirX, dirY) {
     const map = MAPS[levelIdx].m;
     let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
@@ -827,7 +827,7 @@ function doBoop() {
         particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.18, vy: Math.sin(ang)*0.18, l: 0.85, c: "🌸", scale: 0.32});
     }
 
-    // FIXED: Player BOOP now respects walls (no shooting through walls)
+    // Player BOOP now respects walls (no shooting through walls)
     sprites.forEach(s => {
         if (!s.alive || s.pickup) return;
         let d = Math.hypot(s.x - player.x, s.y - player.y);
@@ -853,7 +853,7 @@ function doBoop() {
             playSound('sine', 340, 380, 0.26, -240);
             player.score += (s.type === 'boss' ? 2000 : 220) * player.mult;
             
-            // NEW: Track boops and plushies saved
+            // Track boops and plushies saved
             totalBoops++;
             totalPlushiesSaved++;
             
@@ -907,7 +907,6 @@ function showEnd(msg) {
     overlay.style.display = 'flex';
     document.getElementById('status-msg').innerText = msg;
     
-    // NEW: Post-victory screen with full stats
     let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
     if (isWin) {
         const finalCombo = Math.floor(highestCombo);
@@ -972,7 +971,6 @@ function update() {
     player.mult = Math.floor(player.combo / 20) + 1;
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
 
-    // NEW: Track highest combo every frame
     if (player.combo > highestCombo) highestCombo = player.combo;
 
     document.getElementById('hp-display').innerText = `❤️ x${Math.max(0, Math.floor(player.hp))}`;
@@ -1050,7 +1048,7 @@ function update() {
         }
     });
 
-    // FIXED: Enemy bullets now use sub-step movement + proper wall collision (no more tunneling through walls)
+    // Enemy bullets now use sub-step movement + proper wall collision (no more tunneling through walls)
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         let removed = false;
@@ -1143,13 +1141,20 @@ function draw() {
     }
 
     let itms = [...sprites.filter(s=>s.alive), ...projectiles.map(p=>({x:p.x, y:p.y, e:"💗", scale:0.38})), ...particles.map(p=>({x:p.x, y:p.y, e:p.c, scale:(p.scale||0.3)*p.l, l:p.l}))];
+    
     itms.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2)).forEach(s => {
         let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
         let ang = Math.atan2(dy, dx) - player.dir;
         while (ang < -Math.PI) ang += Math.PI*2; while (ang > Math.PI) ang -= Math.PI*2;
-        if (Math.abs(ang) < 0.8) {
+        
+        // FIX: Increased angle threshold to prevent large sprites from popping out when their center leaves the view cone
+        if (Math.abs(ang) < 1.1) {
             let sx = (ang / 1.2 + 0.5) * 400;
-            if (zBuf[Math.floor(sx)] > dist) {
+            
+            // FIX: Constrain z-buffer check to array bounds (0 to 399) to stop undefined out-of-bounds flickering
+            let zIndex = Math.max(0, Math.min(399, Math.floor(sx)));
+            
+            if (zBuf[zIndex] > dist) {
                 let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.type === 'boss' ? 2.6 : 1));
                 ctx.globalAlpha = s.l || 1;
                 if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
