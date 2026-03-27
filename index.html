@@ -1346,7 +1346,7 @@ function update() {
         if (joyDist > 0.68) isSprinting = true;
         if (Math.abs(gpMoveY) > 0.68 || Math.abs(gpMoveX) > 0.68) isSprinting = true; 
         
-        let moveSpeed = isSprinting ? 0.095 : 0.055;
+        let moveSpeed = isSprinting ? 0.095 : 0.045;
         
         let dx = Math.cos(player.dir) * moveSpeed; 
         let dy = Math.sin(player.dir) * moveSpeed;
