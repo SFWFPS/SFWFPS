@@ -42,6 +42,8 @@
             width: 100vw !important;
             height: 100dvh !important;
             z-index: 9999 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
         #start-menu { 
@@ -205,7 +207,7 @@
             justify-content: center;
             font-size: 20px;
             pointer-events: auto;
-            touch-action: none;
+            touch-action: manipulation;
         }
         #pause-toggle { left: 10px; }
 
@@ -460,7 +462,7 @@
     </div>
 
     <div id="viewport">
-        <button id="pause-toggle" class="util-btn">⏸️</button>
+        <button id="pause-toggle" class="util-btn" onclick="togglePause()">⏸️</button>
 
         <canvas id="c"></canvas>
         <div id="vignette"></div>
@@ -560,7 +562,6 @@ const domVignette = document.getElementById('vignette');
 const domDodgeBtn = document.getElementById('btn-dodge');
 const domBoopBtn = document.getElementById('btn-boop');
 const domSwapBtn = document.getElementById('btn-swap');
-const domPauseBtn = document.getElementById('pause-toggle');
 
 const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
 const mCanvas = document.getElementById('m-canvas'), mCtx = mCanvas.getContext('2d');
@@ -786,9 +787,14 @@ function enterFullscreen() {
     const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
 
     if (req) {
-        const promise = req.call(docEl);
-        if (promise) {
-            promise.catch(() => vp.classList.add('ios-fullscreen-fix'));
+        try {
+            const promise = req.call(docEl);
+            if (promise && typeof promise.catch === 'function') {
+                promise.catch(() => vp.classList.add('ios-fullscreen-fix'));
+            }
+        } catch (e) {
+            // iOS Safari actively throws a TypeError if not triggered by a direct user tap.
+            vp.classList.add('ios-fullscreen-fix');
         }
     } else {
         vp.classList.add('ios-fullscreen-fix');
@@ -802,10 +808,11 @@ function exitFullscreen() {
     const vp = document.getElementById('viewport');
     const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
     
-    if (exit && (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement)) {
-        exit.call(doc);
-    }
     vp.classList.remove('ios-fullscreen-fix');
+    
+    if (exit && (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement)) {
+        try { exit.call(doc); } catch(e) {}
+    }
 }
 
 function toggleFullscreen() {
@@ -826,7 +833,8 @@ window.addEventListener("orientationchange", () => {
     if (!isMobileDevice || !gameActive || paused) return;
     
     setTimeout(() => {
-        const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+        // window.orientation is deprecated but is the most reliable check for older Safari
+        const isLandscape = window.matchMedia("(orientation: landscape)").matches || Math.abs(window.orientation) === 90;
         if (isLandscape) {
             enterFullscreen();
         } else {
@@ -835,8 +843,12 @@ window.addEventListener("orientationchange", () => {
     }, 150); // Small delay allows iOS to finish rotating its viewport
 });
 
+// Added a small cooldown to prevent iOS from double-toggling due to phantom tap events
+let lastPauseTime = 0;
 function togglePause() {
-    if (!gameActive || isLoading) return;
+    if (!gameActive || isLoading || Date.now() - lastPauseTime < 300) return;
+    lastPauseTime = Date.now();
+    
     paused = !paused;
     document.getElementById('pause-menu').style.display = paused ? 'flex' : 'none';
     if (audioCtx) {
@@ -853,7 +865,7 @@ function selectDifficulty(mult) {
     initGame();
     
     // Automatically attempt fullscreen if they are on mobile in landscape when starting
-    if (isMobileDevice && window.matchMedia("(orientation: landscape)").matches) {
+    if (isMobileDevice && (window.matchMedia("(orientation: landscape)").matches || Math.abs(window.orientation) === 90)) {
         enterFullscreen();
     }
 }
@@ -1026,9 +1038,6 @@ domSwapBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused
 
 domDodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doDodge(); });
 domDodgeBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doDodge(); }, { passive: false });
-
-domPauseBtn.addEventListener('pointerdown', e => { e.preventDefault(); togglePause(); });
-domPauseBtn.addEventListener('touchstart', e => { e.preventDefault(); togglePause(); }, { passive: false });
 
 let joyCenterX, joyCenterY;
 function setupJoystick() {
