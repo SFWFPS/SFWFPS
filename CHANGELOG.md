@@ -4,6 +4,7 @@
 **Project:** Single-file HTML5 raycasting game — a wholesome “Plushie Edition” of DOOM. Fully playable at https://sfwfps.com.
 
 **March 26, 2026**
+- BUG: Identified a landscape bug on iOS. Investigating.
 - Integrated Beta Steam Deck compatibility (D-pad and standard button mapping only for now).
 - Fixed a critical game freeze bug that triggered when defeating the second enemy on the first level.
 - Improved the raycaster math using bitwise operations and added a hard step limit to the raycaster to prevent infinite loops.
