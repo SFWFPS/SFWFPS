@@ -1233,7 +1233,7 @@ function showEnd(msg) {
     document.getElementById('final-stats').innerHTML = statsHTML;
     
     shareBtn.onclick = () => {
-        const fullPost = `${isWin ? '🏆' : '🧸'} Score: ${currentScore} in SFWFPS!\nhttps://sfwdoom.fun`;
+        const fullPost = `${isWin ? '🏆' : '🧸'} Score: ${currentScore} in SFWFPS!\nhttps://sfwfps.com`;
         navigator.clipboard.writeText(fullPost).then(() => {
             shareBtn.textContent = "Opening X... ✨";
             window.open(`https://x.com/intent/post?text=${encodeURIComponent(fullPost)}`, '_blank');
