@@ -460,7 +460,7 @@
     </div>
 
     <div id="viewport">
-        <button id="pause-toggle" class="util-btn" onclick="togglePause()">⏸️</button>
+        <button id="pause-toggle" class="util-btn">⏸️</button>
 
         <canvas id="c"></canvas>
         <div id="vignette"></div>
@@ -560,6 +560,7 @@ const domVignette = document.getElementById('vignette');
 const domDodgeBtn = document.getElementById('btn-dodge');
 const domBoopBtn = document.getElementById('btn-boop');
 const domSwapBtn = document.getElementById('btn-swap');
+const domPauseBtn = document.getElementById('pause-toggle');
 
 const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
 const mCanvas = document.getElementById('m-canvas'), mCtx = mCanvas.getContext('2d');
@@ -777,30 +778,62 @@ let turnActive = false, lastTurnClientX = 0, turnPointerId = null;
 const viewportEl = document.getElementById('viewport');
 
 const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 2) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-const orientationMedia = window.matchMedia("(orientation: landscape)");
 
-function handleOrientationChange(e) {
-    if (e.matches && isMobileDevice && gameActive && !paused) {
-        const doc = window.document;
-        const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-        if (!currentlyFullscreen) {
-            toggleFullscreen();
+// --- FULLSCREEN LOGIC ---
+function enterFullscreen() {
+    const docEl = window.document.documentElement;
+    const vp = document.getElementById('viewport');
+    const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
+
+    if (req) {
+        const promise = req.call(docEl);
+        if (promise) {
+            promise.catch(() => vp.classList.add('ios-fullscreen-fix'));
         }
+    } else {
+        vp.classList.add('ios-fullscreen-fix');
+    }
+    // Trick iOS into hiding the URL bar when entering fullscreen layout
+    setTimeout(() => window.scrollTo(0, 1), 100); 
+}
+
+function exitFullscreen() {
+    const doc = window.document;
+    const vp = document.getElementById('viewport');
+    const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+    
+    if (exit && (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement)) {
+        exit.call(doc);
+    }
+    vp.classList.remove('ios-fullscreen-fix');
+}
+
+function toggleFullscreen() {
+    const doc = window.document;
+    const vp = document.getElementById('viewport');
+    const isNativeFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+    const isiOSFs = vp.classList.contains('ios-fullscreen-fix');
+    
+    if (isNativeFs || isiOSFs) {
+        exitFullscreen();
+    } else {
+        enterFullscreen();
     }
 }
-orientationMedia.addEventListener("change", handleOrientationChange);
 
-if (orientationMedia.matches && isMobileDevice) {
+// Ensure layout checks handle iOS quirks smoothly
+window.addEventListener("orientationchange", () => {
+    if (!isMobileDevice || !gameActive || paused) return;
+    
     setTimeout(() => {
-        if (gameActive && !paused) {
-            const doc = window.document;
-            const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-            if (!currentlyFullscreen) {
-                toggleFullscreen();
-            }
+        const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+        if (isLandscape) {
+            enterFullscreen();
+        } else {
+            exitFullscreen();
         }
-    }, 1200);
-}
+    }, 150); // Small delay allows iOS to finish rotating its viewport
+});
 
 function togglePause() {
     if (!gameActive || isLoading) return;
@@ -812,49 +845,24 @@ function togglePause() {
     }
 }
 
-function toggleFullscreen() {
-    const doc = window.document;
-    const docEl = doc.documentElement;
-    const vp = document.getElementById('viewport');
-
-    const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
-    const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
-
-    if (requestFullScreen) {
-        if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-            requestFullScreen.call(docEl).catch(err => {
-                applyiOSFullscreenFallback(vp);
-            });
-        } else {
-            if (cancelFullScreen) cancelFullScreen.call(doc);
-            vp.classList.remove('ios-fullscreen-fix');
-        }
-    } else {
-        applyiOSFullscreenFallback(vp);
-    }
-}
-
-function applyiOSFullscreenFallback(el) {
-    if (el.classList.contains('ios-fullscreen-fix')) {
-        el.classList.remove('ios-fullscreen-fix');
-    } else {
-        el.classList.add('ios-fullscreen-fix');
-        window.scrollTo(0, 0);
-    }
-}
-
 function selectDifficulty(mult) {
     difficultyMult = mult;
     document.getElementById('start-menu').style.display = 'none';
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     initGame();
+    
+    // Automatically attempt fullscreen if they are on mobile in landscape when starting
+    if (isMobileDevice && window.matchMedia("(orientation: landscape)").matches) {
+        enterFullscreen();
+    }
 }
 
 function returnToMenu() {
     gameActive = false; paused = false;
     sprites = []; projectiles = []; 
     resetParticles();
+    exitFullscreen();
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
     document.getElementById('start-menu').style.display = 'flex';
@@ -1009,6 +1017,7 @@ window.onkeydown = e => {
 };
 window.onkeyup = e => keys[e.code] = false;
 
+// Event listener bindings to handle iOS strict pointer rules
 domBoopBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doBoop(); });
 domBoopBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doBoop(); }, { passive: false });
 
@@ -1017,6 +1026,9 @@ domSwapBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused
 
 domDodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doDodge(); });
 domDodgeBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doDodge(); }, { passive: false });
+
+domPauseBtn.addEventListener('pointerdown', e => { e.preventDefault(); togglePause(); });
+domPauseBtn.addEventListener('touchstart', e => { e.preventDefault(); togglePause(); }, { passive: false });
 
 let joyCenterX, joyCenterY;
 function setupJoystick() {
