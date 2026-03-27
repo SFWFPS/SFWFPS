@@ -547,6 +547,9 @@ function resetParticles() {
     poolIdx = 0;
 }
 
+// DELTA TIME (this is the single biggest optimization)
+let lastTime = performance.now();
+
 // --- GLOBALLY CACHED DOM ELEMENTS ---
 const domHpDisplay = document.getElementById('hp-display');
 const domScoreDisplay = document.getElementById('score-display');
@@ -983,9 +986,8 @@ function doDodge() {
     
     if (isPullingBack || joyForward < -0.1) moveDir += Math.PI; 
     
-    let speed = 0.22;
-    dodgeDx = Math.cos(moveDir) * speed;
-    dodgeDy = Math.sin(moveDir) * speed;
+    dodgeDx = Math.cos(moveDir) * 0.22;
+    dodgeDy = Math.sin(moveDir) * 0.22;
     
     for(let i=0; i<8; i++) {
         let ang = moveDir + Math.PI + (Math.random()-0.5); 
@@ -1251,7 +1253,7 @@ function showEnd(msg) {
 
 document.getElementById('retry-btn').onclick = returnToMenu;
 
-function update() {
+function update(dt = 1) {
     if (!gameActive || isLoading || paused) return;
 
     const gp = currentGp;
@@ -1292,8 +1294,8 @@ function update() {
         if (getBtn(15)) gpMoveX = 1.0;
     }
 
-    if (attackAnim > 0) attackAnim -= 0.12;
-    if (shake > 0) shake -= 0.12;
+    if (attackAnim > 0) attackAnim -= 0.12 * dt;
+    if (shake > 0) shake -= 0.12 * dt;
 
     const map = MAPS[levelIdx].m;
     const canMove = (x, y) => {
@@ -1334,9 +1336,9 @@ function update() {
     isMoving = false;
 
     if (dodgeTime > 0) {
-        dodgeTime--;
-        if (canMove(player.x + dodgeDx, player.y)) player.x += dodgeDx;
-        if (canMove(player.x, player.y + dodgeDy)) player.y += dodgeDy;
+        dodgeTime -= dt;
+        if (canMove(player.x + dodgeDx * dt, player.y)) player.x += dodgeDx * dt;
+        if (canMove(player.x, player.y + dodgeDy * dt)) player.y += dodgeDy * dt;
         isMoving = true;
     } else {
         isDodging = false;
@@ -1346,7 +1348,7 @@ function update() {
         if (joyDist > 0.68) isSprinting = true;
         if (Math.abs(gpMoveY) > 0.68 || Math.abs(gpMoveX) > 0.68) isSprinting = true; 
         
-        let moveSpeed = isSprinting ? 0.095 : 0.045;
+        let moveSpeed = (isSprinting ? 0.095 : 0.045) * dt;
         
         let dx = Math.cos(player.dir) * moveSpeed; 
         let dy = Math.sin(player.dir) * moveSpeed;
@@ -1384,7 +1386,8 @@ function update() {
         }
     }
 
-    if (isMoving) bob += (keys['ShiftLeft'] || gpSprint || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
+    if (isMoving) bob += (keys['ShiftLeft'] || gpSprint || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 * dt : 0.16 * dt; 
+    else bob = Math.max(0, bob - 0.12 * dt);
     
     if (isDodging !== lastIsDodging) {
         domVignette.style.background = isDodging 
@@ -1398,7 +1401,7 @@ function update() {
         lastVignetteOpacity = newOpacity;
     }
 
-    player.combo = Math.max(0, player.combo - 0.12);
+    player.combo = Math.max(0, player.combo - 0.12 * dt);
     player.mult = Math.floor(player.combo / 20) + 1;
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
     if (player.combo > highestCombo) highestCombo = player.combo;
@@ -1460,7 +1463,7 @@ function update() {
 
     sprites.forEach(s => {
         if (!s.alive) return;
-        if (s.atkTimer > 0) s.atkTimer -= 16;
+        if (s.atkTimer > 0) s.atkTimer -= 16 * dt;
         let d = Math.sqrt((s.x-player.x)**2 + (s.y-player.y)**2);
         
         if (s.pickup && d < 0.6) { 
@@ -1512,7 +1515,8 @@ function update() {
                     }
                 }
             } else {
-                s.strafeTimer++; if (s.strafeTimer > 60) { s.strafeDir *= -1; s.strafeTimer = 0; }
+                s.strafeTimer += dt; 
+                if (s.strafeTimer > 60) { s.strafeDir *= -1; s.strafeTimer = 0; }
                 let sy = s.y + (s.strafeDir * 0.038); if (canMove(s.x, sy)) s.y = sy;
                 if (d < 12 && Date.now() - s.lastShot > 1900) {
                     let a = Math.atan2(player.y-s.y, player.x-s.x);
@@ -1523,7 +1527,7 @@ function update() {
             }
         } else if (!s.pickup) {
             if (d < 12 && d > 0.5) { 
-                let enemySpeed = 0.012 * (difficultyMult === 1.0 ? 0.8 : (difficultyMult === 1.5 ? 1.0 : 1.3));
+                let enemySpeed = 0.012 * (difficultyMult === 1.0 ? 0.8 : (difficultyMult === 1.5 ? 1.0 : 1.3)) * dt;
                 let dirX = (player.x - s.x) / d; let dirY = (player.y - s.y) / d;
                 
                 let sepX = 0, sepY = 0;
@@ -1549,11 +1553,13 @@ function update() {
         }
     });
 
+    // Projectiles (delta-time + sub-step collision)
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         let removed = false;
         const steps = 4;
-        const stepVx = p.vx / steps; const stepVy = p.vy / steps;
+        const stepVx = p.vx * dt / steps;
+        const stepVy = p.vy * dt / steps;
         for (let k = 0; k < steps && !removed; k++) {
             p.x += stepVx; p.y += stepVy;
             if (Math.hypot(p.x - player.x, p.y - player.y) < 0.45) {
@@ -1572,15 +1578,17 @@ function update() {
             }
             if (!removed && map[Math.floor(p.y)]?.[Math.floor(p.x)] === 1) removed = true;
         }
-        p.l -= 1;
+        p.l -= dt;
         if (removed || p.l <= 0) projectiles.splice(i, 1);
     }
 
-    // UPDATE POOLED PARTICLES (No splicing!)
+    // UPDATE POOLED PARTICLES (delta-time)
     for (let i = 0; i < MAX_PARTICLES; i++) {
         let p = particlePool[i];
         if (p.active) {
-            p.x += p.vx; p.y += p.vy; p.l -= 0.035; 
+            p.x += p.vx * dt; 
+            p.y += p.vy * dt; 
+            p.l -= 0.035 * dt; 
             if (p.l <= 0) p.active = false; 
         }
     }
@@ -1794,6 +1802,10 @@ function drawMinimap() {
 }
 
 function loop() { 
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 16.6667, 3); // normalized to ~60 fps, clamped
+    lastTime = now;
+
     currentGp = getGamepad();
     
     if (currentGp) {
@@ -1805,7 +1817,7 @@ function loop() {
     }
 
     if (gameActive && !paused) { 
-        update(); 
+        update(dt); 
         draw(); 
     } 
     requestAnimationFrame(loop); 
