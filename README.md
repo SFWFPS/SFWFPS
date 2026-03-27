@@ -43,3 +43,5 @@ The game features several distinct zones:
    
 # Getting Started
 Simply navigate to https://sfwfps.com in any modern web browser to start your quest!
+
+https://github.com/SFWFPS/SFWFPS/blob/photos/animated_sticker_sfwfps.gif
