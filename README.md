@@ -10,7 +10,6 @@ You are the Plushie Protector. The Fuzzy Forest and its surrounding realms have 
  * Dynamic Movement: Features a "floaty" bobbing camera and sprint mechanics to glide through levels.
  * Ray-Casted Visuals: A custom-built pseudo-3D engine that renders a vibrant, cotton-candy world in real-time.
  * Combo System: Keep booping to build your combo meter and multiply your score!
- * Secret Portals: Discover hidden gateways like the one in Sugar Sanctuary to access secret challenge levels.
  * Global Leaderboard!: Compete for the highest score and become the ultimate Champion of Cheer.
 
 # Controls
