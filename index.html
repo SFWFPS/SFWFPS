@@ -897,7 +897,7 @@ function loadLevel(idx) {
     });
 
     if (l.boss) {
-        const bossMaxHp = Math.round(36 * difficultyMult);
+        const bossMaxHp = Math.round(28 * difficultyMult);
         sprites.push({ ...l.boss, hp: bossMaxHp, maxHp: bossMaxHp, alive: true, type: 'boss', lastShot: Date.now(), atkTimer: 0, strafeDir: 1, strafeTimer: 0 });
     }
     
@@ -1295,7 +1295,7 @@ function update() {
     let turnLeft = keys['KeyA'] || keys['ArrowLeft'];
     let turnRight = keys['KeyD'] || keys['ArrowRight'];
 
-    let rotSpeed = 0.075;
+    let rotSpeed = 0.065;
     if (turnLeft) player.dir -= rotSpeed;
     if (turnRight) player.dir += rotSpeed;
     if (joyActive) player.dir += joyTurn * 0.085;
@@ -1316,7 +1316,7 @@ function update() {
         if (joyDist > 0.68) isSprinting = true;
         if (Math.abs(gpMoveY) > 0.68 || Math.abs(gpMoveX) > 0.68) isSprinting = true; 
         
-        let moveSpeed = isSprinting ? 0.095 : 0.092;
+        let moveSpeed = isSprinting ? 0.095 : 0.055;
         
         let dx = Math.cos(player.dir) * moveSpeed; 
         let dy = Math.sin(player.dir) * moveSpeed;
