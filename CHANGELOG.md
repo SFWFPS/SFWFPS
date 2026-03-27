@@ -2,7 +2,7 @@
 
 **Repository:** https://github.com/sfwfps/SFWFPS
 
-**Project:** Single-file HTML5 raycasting game — a wholesome “Plushie Edition” of an oldschool 90s style FPS. Fully playable at https://sfwfps.com.
+**Project:** Single-file HTML5 raycasting game — a wholesome felt plushie game in the style of an oldschool 90s style FPS. Fully playable at https://sfwfps.com.
 
 **March 26, 2026**
 - speed and mobile control optimization.
