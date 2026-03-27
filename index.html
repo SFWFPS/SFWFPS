@@ -435,7 +435,7 @@
                 <small>Easy • 1 damage • 1.0× health • 1× enemies</small>
             </button>
             
-            <button onclick="selectDifficulty(1.5)" class="diff-btn" style="background: var(--hot-pink); animation: pulse 1.8s infinite;">
+            <button onclick="selectDifficulty(1.5)" class="diff-btn" style="background: var(--hot-pink);">
                 A Little Eepy<br>
                 <small>Normal • 2 damage • 1.5× health • 2× enemies</small>
             </button>
@@ -524,9 +524,22 @@
     </div>
 
 <script>
+// --- GLOBALLY CACHED DOM ELEMENTS ---
+const domHpDisplay = document.getElementById('hp-display');
+const domScoreDisplay = document.getElementById('score-display');
+const domHiDisplay = document.getElementById('hi-display');
+const domMultDisplay = document.getElementById('mult-display');
+const domComboFill = document.getElementById('combo-fill');
+const domPlayerFace = document.getElementById('player-face');
+const domBossHud = document.getElementById('boss-hud');
+const domBossBarFill = document.getElementById('boss-bar-fill');
+const domVignette = document.getElementById('vignette');
+const domDodgeBtn = document.getElementById('btn-dodge');
+const domBoopBtn = document.getElementById('btn-boop');
+const domSwapBtn = document.getElementById('btn-swap');
+
 const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
 const mCanvas = document.getElementById('m-canvas'), mCtx = mCanvas.getContext('2d');
-const vignette = document.getElementById('vignette');
 const pCanvas = document.createElement('canvas');
 pCanvas.width = 256; pCanvas.height = 256;
 const pCtx = pCanvas.getContext('2d');
@@ -542,6 +555,7 @@ let lastCombo = -1;
 let lastFaceUrl = '';
 let lastIsDodging = false;
 let lastVignetteOpacity = -1;
+let lastDodgeReady = true;
 
 let miniBgCanvas = document.createElement('canvas');
 miniBgCanvas.width = 80;
@@ -550,6 +564,7 @@ let miniBgCtx = miniBgCanvas.getContext('2d');
 let minimapStaticDirty = true;
 
 // GAMEPAD STATE VARIABLES
+let currentGp = null;
 let lastGamepadSwap = false;
 let lastGamepadPause = false;
 
@@ -564,11 +579,9 @@ function getGamepad() {
 
 window.addEventListener("gamepadconnected", (e) => {
     document.getElementById('bottom-controls-overlay').style.display = 'none';
-    console.log("Gamepad connected:", e.gamepad.id);
 });
 window.addEventListener("gamepaddisconnected", (e) => {
     document.getElementById('bottom-controls-overlay').style.display = 'flex';
-    console.log("Gamepad disconnected:", e.gamepad.id);
 });
 
 function redrawMinimapStatic() {
@@ -884,7 +897,7 @@ function loadLevel(idx) {
     });
 
     if (l.boss) {
-        const bossMaxHp = Math.round(12 * difficultyMult);
+        const bossMaxHp = Math.round(36 * difficultyMult);
         sprites.push({ ...l.boss, hp: bossMaxHp, maxHp: bossMaxHp, alive: true, type: 'boss', lastShot: Date.now(), atkTimer: 0, strafeDir: 1, strafeTimer: 0 });
     }
     
@@ -941,9 +954,8 @@ function doDodge() {
 
     let moveDir = player.dir;
     
-    // Explicitly check for backwards intent across all inputs
-    const gp = getGamepad();
-    let isPullingBack = keys['KeyS'] || keys['ArrowDown'] || (gp && gp.axes.length > 1 && gp.axes[1] > 0.2);
+    // Check against global currentGp instead of creating a new array
+    let isPullingBack = keys['KeyS'] || keys['ArrowDown'] || (currentGp && currentGp.axes.length > 1 && currentGp.axes[1] > 0.2);
     
     if (isPullingBack || joyForward < -0.1) moveDir += Math.PI; 
     
@@ -957,7 +969,6 @@ function doDodge() {
     }
 }
 
-// Broadened keyboard listener to catch Steam Deck keyboard mapping wrappers
 window.onkeydown = e => { 
     if (e.code === 'Escape') togglePause();
     if (paused) return;
@@ -974,17 +985,14 @@ window.onkeydown = e => {
 };
 window.onkeyup = e => keys[e.code] = false;
 
-const boopBtn = document.getElementById('btn-boop');
-boopBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doBoop(); });
-boopBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doBoop(); }, { passive: false });
+domBoopBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doBoop(); });
+domBoopBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doBoop(); }, { passive: false });
 
-const swapBtn = document.getElementById('btn-swap');
-swapBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) swapWeapon(); });
-swapBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) swapWeapon(); }, { passive: false });
+domSwapBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) swapWeapon(); });
+domSwapBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) swapWeapon(); }, { passive: false });
 
-const dodgeBtn = document.getElementById('btn-dodge');
-dodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doDodge(); });
-dodgeBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doDodge(); }, { passive: false });
+domDodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doDodge(); });
+domDodgeBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doDodge(); }, { passive: false });
 
 let joyCenterX, joyCenterY;
 function setupJoystick() {
@@ -1177,7 +1185,7 @@ function showEnd(msg) {
     let highScore = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
     
     overlay.style.display = 'flex';
-    document.getElementById('status-msg').innerText = msg;
+    document.getElementById('status-msg').textContent = msg;
     
     let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
     if (isWin) {
@@ -1203,7 +1211,7 @@ function showEnd(msg) {
     shareBtn.onclick = () => {
         const fullPost = `${isWin ? '🏆' : '🧸'} Score: ${currentScore} in SFWFPS!\nhttps://sfwdoom.fun`;
         navigator.clipboard.writeText(fullPost).then(() => {
-            shareBtn.innerText = "Opening X... ✨";
+            shareBtn.textContent = "Opening X... ✨";
             window.open(`https://x.com/intent/post?text=${encodeURIComponent(fullPost)}`, '_blank');
         });
     };
@@ -1214,14 +1222,12 @@ document.getElementById('retry-btn').onclick = returnToMenu;
 function update() {
     if (!gameActive || isLoading || paused) return;
 
-    // === BULLETPROOF GAMEPAD POLLING ===
-    const gp = getGamepad();
+    // Utilize the global Gamepad polled once per frame
+    const gp = currentGp;
     let gpMoveY = 0, gpMoveX = 0, gpTurnX = 0, gpSprint = false;
 
     if (gp) {
         const deadzone = 0.15;
-        
-        // Scan all potential axes to prevent driver shift failures
         const axis0 = gp.axes.length > 0 ? gp.axes[0] : 0;
         const axis1 = gp.axes.length > 1 ? gp.axes[1] : 0;
         const axis2 = gp.axes.length > 2 ? gp.axes[2] : 0;
@@ -1235,29 +1241,25 @@ function update() {
         else if (Math.abs(axis3) > deadzone && Math.abs(axis3) > Math.abs(axis2)) gpTurnX = axis3;
         else if (Math.abs(axis4) > deadzone && Math.abs(axis4) > Math.abs(axis2)) gpTurnX = axis4;
 
-        // Helper to safely read buttons
         const getBtn = (idx) => gp.buttons.length > idx && gp.buttons[idx]?.pressed;
 
-        if (getBtn(10) || getBtn(6)) gpSprint = true; // L3 or LT
+        if (getBtn(10) || getBtn(6)) gpSprint = true; 
         
-        // Multi-mapping to catch Nintendo or shifted layouts
-        if (getBtn(7) || getBtn(0) || getBtn(5)) doBoop(); // RT, A, or RB
-        if (getBtn(1) || getBtn(2)) doDodge(); // B or X
+        if (getBtn(7) || getBtn(0) || getBtn(5)) doBoop(); 
+        if (getBtn(1) || getBtn(2)) doDodge(); 
         
-        if ((getBtn(3) || getBtn(4)) && !lastGamepadSwap) { // Y or LB
+        if ((getBtn(3) || getBtn(4)) && !lastGamepadSwap) { 
             swapWeapon();
             lastGamepadSwap = true;
         } else if (!getBtn(3) && !getBtn(4)) {
             lastGamepadSwap = false;
         }
 
-        // Catch D-PAD if it's mapped to high buttons instead of axes
         if (getBtn(12)) gpMoveY = -1.0;
         if (getBtn(13)) gpMoveY = 1.0;
         if (getBtn(14)) gpMoveX = -1.0;
         if (getBtn(15)) gpMoveX = 1.0;
     }
-    // === END GAMEPAD POLLING ===
 
     if (attackAnim > 0) attackAnim -= 0.12;
     if (shake > 0) shake -= 0.12;
@@ -1275,21 +1277,24 @@ function update() {
         player.score += untouchedSecs * 0.05; 
     }
 
-    if (Date.now() - lastDodgeTime < 1000) {
-        dodgeBtn.style.opacity = 0.4;
-        dodgeBtn.style.filter = "grayscale(100%)";
-    } else {
-        dodgeBtn.style.opacity = 1;
-        dodgeBtn.style.filter = "none";
+    // CACHED DODGE BUTTON STYLE - Avoids overwriting CSS 60x a second
+    let dodgeReady = (Date.now() - lastDodgeTime >= 1000);
+    if (dodgeReady !== lastDodgeReady) {
+        if (!dodgeReady) {
+            domDodgeBtn.style.opacity = 0.4;
+            domDodgeBtn.style.filter = "grayscale(100%)";
+        } else {
+            domDodgeBtn.style.opacity = 1;
+            domDodgeBtn.style.filter = "none";
+        }
+        lastDodgeReady = dodgeReady;
     }
 
-    // Unify Keyboard Inputs (Catches Arrow Keys if Steam Wrapper is active)
     let moveUp = keys['KeyW'] || keys['ArrowUp'];
     let moveDown = keys['KeyS'] || keys['ArrowDown'];
     let turnLeft = keys['KeyA'] || keys['ArrowLeft'];
     let turnRight = keys['KeyD'] || keys['ArrowRight'];
 
-    // Turning Applier
     let rotSpeed = 0.075;
     if (turnLeft) player.dir -= rotSpeed;
     if (turnRight) player.dir += rotSpeed;
@@ -1313,7 +1318,6 @@ function update() {
         
         let moveSpeed = isSprinting ? 0.095 : 0.092;
         
-        // --- Keyboard / Arrow Move ---
         let dx = Math.cos(player.dir) * moveSpeed; 
         let dy = Math.sin(player.dir) * moveSpeed;
         if (moveUp) { 
@@ -1325,7 +1329,6 @@ function update() {
             if (canMove(player.x, player.y - dy)) { player.y -= dy; isMoving = true; } 
         }
 
-        // --- Touch Move ---
         if (joyActive) {
             let fwd = joyForward * moveSpeed * 1.05;
             if (fwd > 0.01 || fwd < -0.01) {
@@ -1336,7 +1339,6 @@ function update() {
             }
         }
 
-        // --- Gamepad Forward/Back ---
         if (gpMoveY !== 0) {
             let fwdDx = Math.cos(player.dir) * (gpMoveY * -moveSpeed);
             let fwdDy = Math.sin(player.dir) * (gpMoveY * -moveSpeed);
@@ -1344,7 +1346,6 @@ function update() {
             if (canMove(player.x, player.y + fwdDy)) { player.y += fwdDy; isMoving = true; }
         }
 
-        // --- Gamepad Strafe (Left Stick X) ---
         if (gpMoveX !== 0) {
             let strafeDx = Math.cos(player.dir + Math.PI/2) * (gpMoveX * moveSpeed);
             let strafeDy = Math.sin(player.dir + Math.PI/2) * (gpMoveX * moveSpeed);
@@ -1356,14 +1357,14 @@ function update() {
     if (isMoving) bob += (keys['ShiftLeft'] || gpSprint || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 : 0.16; else bob = Math.max(0, bob - 0.12);
     
     if (isDodging !== lastIsDodging) {
-        vignette.style.background = isDodging 
+        domVignette.style.background = isDodging 
             ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" 
             : "radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%)";
         lastIsDodging = isDodging;
     }
     const newOpacity = isDodging ? 1 : (player.hp <= 5 ? (0.45 + Math.sin(Date.now() * 0.06) * 0.45) : 0);
     if (Math.abs(newOpacity - lastVignetteOpacity) > 0.015) {
-        vignette.style.opacity = newOpacity;
+        domVignette.style.opacity = newOpacity;
         lastVignetteOpacity = newOpacity;
     }
 
@@ -1374,31 +1375,31 @@ function update() {
 
     const currentHP = Math.max(0, Math.floor(player.hp));
     if (currentHP !== lastHP) {
-        document.getElementById('hp-display').innerText = `❤️ x${currentHP}`;
+        domHpDisplay.textContent = `❤️ x${currentHP}`;
         lastHP = currentHP;
     }
 
     const bonusText = untouchedSecs > 5 ? ` 🛡️+${Math.floor(untouchedSecs)}` : "";
     const scoreText = `✨ ${Math.floor(player.score)}${bonusText}`;
     if (scoreText !== lastScoreText) {
-        document.getElementById('score-display').innerText = scoreText;
+        domScoreDisplay.textContent = scoreText;
         lastScoreText = scoreText;
     }
 
     const currentHi = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
     if (currentHi !== lastHi) {
-        document.getElementById('hi-display').innerText = `🏆 ${currentHi}`;
+        domHiDisplay.textContent = `🏆 ${currentHi}`;
         lastHi = currentHi;
     }
 
     const multText = `x${player.mult}`;
     if (multText !== lastMultText) {
-        document.getElementById('mult-display').innerText = multText;
+        domMultDisplay.textContent = multText;
         lastMultText = multText;
     }
 
     if (Math.abs(player.combo - lastCombo) > 0.4) {
-        document.getElementById('combo-fill').style.width = player.combo + "%";
+        domComboFill.style.width = player.combo + "%";
         lastCombo = player.combo;
     }
 
@@ -1414,20 +1415,17 @@ function update() {
         }
     }
     if (faceUrl !== lastFaceUrl) {
-        document.getElementById('player-face').src = faceUrl;
+        domPlayerFace.src = faceUrl;
         lastFaceUrl = faceUrl;
     }
 
     const activeBoss = sprites.find(s => s.type === 'boss' && s.alive);
-    const bossHud = document.getElementById('boss-hud');
-    const bossBarFill = document.getElementById('boss-bar-fill');
-    
     if (activeBoss) {
-        bossHud.style.display = 'flex';
+        domBossHud.style.display = 'flex';
         const bossHpPct = (activeBoss.hp / activeBoss.maxHp) * 100;
-        bossBarFill.style.width = bossHpPct + "%";
+        domBossBarFill.style.width = bossHpPct + "%";
     } else {
-        bossHud.style.display = 'none';
+        domBossHud.style.display = 'none';
     }
 
     sprites.forEach(s => {
@@ -1624,11 +1622,15 @@ function draw() {
         wallX -= Math.floor(wallX);
 
         const wallTex = (hit === 9) ? pCanvas : tex;
-        let texX = Math.floor(wallX * wallTex.width);
-        ctx.globalAlpha = Math.max(0.18, 1 - (perpWallDist / 12));
-        ctx.drawImage(wallTex, texX, 0, 1, wallTex.height, i, 150 - h/2, 1, h);
-        if (side === 1 && hit !== 9) { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(i, 150 - h/2, 1, h); }
-        ctx.globalAlpha = 1;
+        
+        // Safety check to prevent IndexSizeError if texture hasn't loaded yet
+        if (wallTex.width > 0) {
+            let texX = Math.floor(wallX * wallTex.width);
+            ctx.globalAlpha = Math.max(0.18, 1 - (perpWallDist / 12));
+            ctx.drawImage(wallTex, texX, 0, 1, wallTex.height, i, 150 - h/2, 1, h);
+            if (side === 1 && hit !== 9) { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(i, 150 - h/2, 1, h); }
+            ctx.globalAlpha = 1;
+        }
     }
 
     displayList.length = 0;
@@ -1756,10 +1758,11 @@ function drawMinimap() {
 }
 
 function loop() { 
-    // Constantly poll the Gamepad's start button so we can pause/unpause
-    const gp = getGamepad();
-    if (gp) {
-        let currentPause = gp.buttons.length > 9 && gp.buttons[9]?.pressed; 
+    // Constantly poll the Gamepad's start button exactly ONCE per frame
+    currentGp = getGamepad();
+    
+    if (currentGp) {
+        let currentPause = currentGp.buttons.length > 9 && currentGp.buttons[9]?.pressed; 
         if (currentPause && !lastGamepadPause) {
             if (gameActive && !isLoading) togglePause();
         }
