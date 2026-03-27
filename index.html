@@ -569,7 +569,7 @@ const pCtx = pCanvas.getContext('2d');
 
 canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80;
 
-let displayList = [];                     
+let displayList = [];                      
 let lastHP = -1;
 let lastScoreText = '';
 let lastHi = -1;
@@ -1040,7 +1040,15 @@ function updateJoystick(e) {
     let dist = Math.hypot(dx, dy);
     if (dist > JOY_RADIUS) { dx = dx * JOY_RADIUS / dist; dy = dy * JOY_RADIUS / dist; }
     currentJoyX = dx; currentJoyY = dy;
-    joyForward = -dy / JOY_RADIUS; joyTurn = dx / JOY_RADIUS;
+    
+    // Add a deadzone to prevent slippery micro-movements
+    if (dist < 12) {
+        joyForward = 0;
+        joyTurn = 0;
+    } else {
+        joyForward = -dy / JOY_RADIUS; 
+        joyTurn = dx / JOY_RADIUS;
+    }
     joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 }
 setupJoystick();
@@ -1052,7 +1060,7 @@ viewportEl.addEventListener('pointerdown', e => {
 });
 document.addEventListener('pointermove', e => {
     if (turnActive && turnPointerId === e.pointerId) {
-        player.dir += (e.clientX - lastTurnClientX) * 0.003;
+        player.dir += (e.clientX - lastTurnClientX) * 0.002; // Reduced from 0.003
         lastTurnClientX = e.clientX;
     }
 });
@@ -1320,7 +1328,7 @@ function update() {
     let rotSpeed = 0.065;
     if (turnLeft) player.dir -= rotSpeed;
     if (turnRight) player.dir += rotSpeed;
-    if (joyActive) player.dir += joyTurn * 0.085;
+    if (joyActive) player.dir += joyTurn * 0.055; // Reduced from 0.085
     if (gpTurnX !== 0) player.dir += gpTurnX * 0.085;
 
     isMoving = false;
