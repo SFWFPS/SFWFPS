@@ -4,6 +4,10 @@
 **Project:** Single-file HTML5 raycasting game — a wholesome “Plushie Edition” of DOOM. Fully playable at https://sfwfps.com.
 
 **March 26, 2026**
+- Integrated Steam Deck compatibility.
+- Fixed a critical game freeze bug that triggered when defeating the second enemy on the first level.
+- Improved the raycaster math using bitwise operations and added a hard step limit to the raycaster to prevent infinite loops.
+- Implemented global DOM caching to significantly reduce game lag and prevent further freezing issues.
 - Game hosting migrated to https://sfwfps.com.
 - The Toy Box System: Implemented a multi-weapon arsenal (Magic Wand, Warm Milk, Heavy Pillow, Lullaby Box) featuring distinct fire rates, damage stats, spread patterns, particle effects, and custom animations.
 - Dodge Mechanic: Added a skill-based dash move that grants invincibility frames (i-frames). Perfectly timing a dodge against the Boss's instant-kill attack awards a massive combo-scaled score bonus.
