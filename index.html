@@ -1214,48 +1214,50 @@ document.getElementById('retry-btn').onclick = returnToMenu;
 function update() {
     if (!gameActive || isLoading || paused) return;
 
-    // === BULLETPROOF GAMEPAD POLLING ===
+    // === BULLETPROOF GAMEPAD POLLING WITH REDUNDANT ACCESS CONTROLS ===
     const gp = getGamepad();
     let gpMoveY = 0, gpMoveX = 0, gpTurnX = 0, gpSprint = false;
 
     if (gp) {
         const deadzone = 0.15;
         
-        // Scan all potential axes to prevent driver shift failures
-        const axis0 = gp.axes.length > 0 ? gp.axes[0] : 0;
-        const axis1 = gp.axes.length > 1 ? gp.axes[1] : 0;
-        const axis2 = gp.axes.length > 2 ? gp.axes[2] : 0;
-        const axis3 = gp.axes.length > 3 ? gp.axes[3] : 0;
-        const axis4 = gp.axes.length > 4 ? gp.axes[4] : 0;
+        // Helper to safely read buttons AND analog triggers (L2/R2) acting as buttons
+        const getBtn = (idx) => gp.buttons.length > idx && (gp.buttons[idx]?.pressed || (gp.buttons[idx]?.value !== undefined && gp.buttons[idx].value > 0.5));
 
-        if (Math.abs(axis1) > deadzone) gpMoveY = axis1; 
-        if (Math.abs(axis0) > deadzone) gpMoveX = axis0; 
-        
-        if (Math.abs(axis2) > deadzone) gpTurnX = axis2;
-        else if (Math.abs(axis3) > deadzone && Math.abs(axis3) > Math.abs(axis2)) gpTurnX = axis3;
-        else if (Math.abs(axis4) > deadzone && Math.abs(axis4) > Math.abs(axis2)) gpTurnX = axis4;
+        // 1. D-PAD & LEFT STICK MOVEMENT (Redundant/Backup)
+        const lsX = gp.axes.length > 0 ? gp.axes[0] : 0;
+        const lsY = gp.axes.length > 1 ? gp.axes[1] : 0;
 
-        // Helper to safely read buttons
-        const getBtn = (idx) => gp.buttons.length > idx && gp.buttons[idx]?.pressed;
+        if (getBtn(12)) gpMoveY = -1.0; // D-pad Up
+        else if (getBtn(13)) gpMoveY = 1.0;  // D-pad Down
+        else if (Math.abs(lsY) > deadzone) gpMoveY = lsY; // Left Stick Y
 
-        if (getBtn(10) || getBtn(6)) gpSprint = true; // L3 or LT
-        
-        // Multi-mapping to catch Nintendo or shifted layouts
-        if (getBtn(7) || getBtn(0) || getBtn(5)) doBoop(); // RT, A, or RB
-        if (getBtn(1) || getBtn(2)) doDodge(); // B or X
-        
-        if ((getBtn(3) || getBtn(4)) && !lastGamepadSwap) { // Y or LB
+        if (getBtn(14)) gpMoveX = -1.0; // D-pad Left
+        else if (getBtn(15)) gpMoveX = 1.0;  // D-pad Right
+        else if (Math.abs(lsX) > deadzone) gpMoveX = lsX; // Left Stick X
+
+        // 2. RIGHT STICK TURNING
+        const rsX = gp.axes.length > 2 ? gp.axes[2] : 0;
+        const fallbackRsX = gp.axes.length > 3 ? gp.axes[3] : 0; // Sometimes Linux shifts right stick to axis 3
+        if (Math.abs(rsX) > deadzone) gpTurnX = rsX;
+        else if (Math.abs(fallbackRsX) > deadzone && Math.abs(fallbackRsX) > Math.abs(rsX)) gpTurnX = fallbackRsX;
+
+        // 3. ACTION BUTTONS (with Trigger Backups)
+        if (getBtn(10) || getBtn(4)) gpSprint = true; // L3 or LB
+
+        // FIRE (Boop): A (0), Right Trigger (7), or Right Bumper (5)
+        if (getBtn(0) || getBtn(7) || getBtn(5)) doBoop(); 
+
+        // DODGE: B (1), X (2), or Left Trigger (6)
+        if (getBtn(1) || getBtn(2) || getBtn(6)) doDodge(); 
+
+        // SWAP: Y (3)
+        if (getBtn(3) && !lastGamepadSwap) {
             swapWeapon();
             lastGamepadSwap = true;
-        } else if (!getBtn(3) && !getBtn(4)) {
+        } else if (!getBtn(3)) {
             lastGamepadSwap = false;
         }
-
-        // Catch D-PAD if it's mapped to high buttons instead of axes
-        if (getBtn(12)) gpMoveY = -1.0;
-        if (getBtn(13)) gpMoveY = 1.0;
-        if (getBtn(14)) gpMoveX = -1.0;
-        if (getBtn(15)) gpMoveX = 1.0;
     }
     // === END GAMEPAD POLLING ===
 
