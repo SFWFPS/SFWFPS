@@ -759,17 +759,19 @@ const MAPS = [
         {x:2.5,y:1.5,e:"🍼",pickup:true},{x:3.5,y:1.5,e:"🛏️",pickup:true},
         {x:4.5,y:1.5,e:"🎵",pickup:true},{x:5.5,y:1.5,e:"📦",pickup:true},
         {x:2.8,y:5.2,e:"🧸",plushieId:0,pickup:true},
-        {x:5.2,y:3.8,e:"🐻",plushieId:1,pickup:true},
+        {x:5.5,y:5.2,e:"🐻",plushieId:1,pickup:true},   // Berry Bear - fixed open tile
         {x:4.1,y:2.2,e:"🐼",plushieId:2,pickup:true}
     ] },
     { n: "The Velvet Vaults", tex: assets.wall2, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [
         {x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"},
-        {x:2.2,y:2.8,e:"🦒",plushieId:4,pickup:true}
+        {x:6.5,y:5.5,e:"🦒",plushieId:4,pickup:true},   // Giraffic - fixed open tile
+        {x:4.5,y:4.5,e:"🐨",plushieId:3,pickup:true}
     ] },
     { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [
         {x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"},
-        {x:2.5,y:2.5,e:"🐘",plushieId:5,pickup:true},
-        {x:5.8,y:3.2,e:"🐰",plushieId:6,pickup:true}
+        {x:4.5,y:3.5,e:"🐘",plushieId:5,pickup:true},   // Ellie - fixed open tile
+        {x:5.8,y:3.2,e:"🐰",plushieId:6,pickup:true},
+        {x:4.8,y:4.2,e:"🦄",plushieId:7,pickup:true}
     ] },
     { n: "Sugar Sanctuary", tex: assets.wall2, m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.1], enemies: [
         {x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true},
@@ -926,15 +928,15 @@ function loadLevel(idx) {
         }
     });
 
-    // CONDITIONAL PLUSHIE SPAWNS (per user request)
+    // CONDITIONAL PLUSHIE SPAWNS (per your exact request)
     if (idx === 4) {  // boss floor only
         if (difficultyMult === 1.5) {
-            // Koala Kiki ONLY in A Little Eepy (normal) boss area
+            // Koala Kiki ONLY in A Little Eepy boss area
             sprites.push({x: 3.5, y: 3.5, e: "🐨", plushieId: 3, pickup: true, alive: true});
         }
         if (difficultyMult === 2.0) {
-            // Sparkle Hoof + Tiggy ONLY in Naptime (hard) boss floor
-            sprites.push({x: 2.5, y: 4.2, e: "🦄", plushieId: 7, pickup: true, alive: true});
+            // Sparkle Hoof + Tiggy ONLY in Naptime boss floor
+            sprites.push({x: 4.5, y: 2.5, e: "🦄", plushieId: 7, pickup: true, alive: true}); // Sparkle Hoof - fixed open tile
             sprites.push({x: 7.5, y: 1.8, e: "🐯", plushieId: 11, pickup: true, alive: true});
         }
     }
@@ -1655,7 +1657,6 @@ function drawMinimap() {
     sprites.forEach(s => {
         if (s.alive) {
             if (s.plushieId !== undefined) {
-                // PLUSHIES NOW SHOW AS GIFT EMOJI 🎁 ON MINIMAP
                 mCtx.save();
                 mCtx.font = "9px serif";
                 mCtx.textAlign = "center";
