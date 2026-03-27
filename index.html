@@ -524,6 +524,29 @@
     </div>
 
 <script>
+// --- OBJECT POOL FOR PARTICLES ---
+const MAX_PARTICLES = 400;
+const particlePool = Array.from({ length: MAX_PARTICLES }, () => ({
+    active: false, x: 0, y: 0, vx: 0, vy: 0, l: 0, e: "", scale: 1, isParticle: true
+}));
+let poolIdx = 0;
+
+// O(1) Particle Spawning (Ring Buffer)
+function emitParticle(x, y, vx, vy, l, e, scale = 0.3) {
+    let p = particlePool[poolIdx];
+    p.active = true;
+    p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.l = l; p.e = e; p.scale = scale;
+    
+    poolIdx = (poolIdx + 1) % MAX_PARTICLES;
+}
+
+function resetParticles() {
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+        particlePool[i].active = false;
+    }
+    poolIdx = 0;
+}
+
 // --- GLOBALLY CACHED DOM ELEMENTS ---
 const domHpDisplay = document.getElementById('hp-display');
 const domScoreDisplay = document.getElementById('score-display');
@@ -714,8 +737,8 @@ const MAPS = [
     { n: "The Starry Summit", tex: assets.wall3, m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"BOSS_FINAL"} }
 ];
 
-let levelIdx = 0, player, sprites = [], projectiles = [], particles = [], keys = {};
-let zBuf = new Array(400);
+let levelIdx = 0, player, sprites = [], projectiles = [], keys = {};
+let zBuf = new Float32Array(400); // Optimization: Typed array for zBuffer
 let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, isLoading = false, maxMultSeen = 1;
 let levelTransitioning = false, portalActive = false;  
 let hitFlash = 0;
@@ -830,7 +853,8 @@ function selectDifficulty(mult) {
 
 function returnToMenu() {
     gameActive = false; paused = false;
-    sprites = []; projectiles = []; particles = [];
+    sprites = []; projectiles = []; 
+    resetParticles();
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
     document.getElementById('start-menu').style.display = 'flex';
@@ -838,8 +862,9 @@ function returnToMenu() {
 
 function initGame() {
     player = { x: 0, y: 0, dir: 0, hp: 15, score: 0, combo: 0, mult: 1 };
-    levelIdx = 0; gameActive = true; particles = []; isLoading = false; maxMultSeen = 1; levelTransitioning = false;
+    levelIdx = 0; gameActive = true; isLoading = false; maxMultSeen = 1; levelTransitioning = false;
     portalActive = false; hitFlash = 0; paused = false;
+    resetParticles();
     
     currentToy = "🪄";
     unlockedToys = { "🪄": true, "🍼": false, "🛏️": false, "🎵": false };
@@ -901,7 +926,8 @@ function loadLevel(idx) {
         sprites.push({ ...l.boss, hp: bossMaxHp, maxHp: bossMaxHp, alive: true, type: 'boss', lastShot: Date.now(), atkTimer: 0, strafeDir: 1, strafeTimer: 0 });
     }
     
-    projectiles = []; particles = [];
+    projectiles = []; 
+    resetParticles();
     minimapStaticDirty = true;               
     showLevelCard(l.n, l.isSecret ? "SECRET FOUND!" : "LEVEL " + (idx + 1));
     setTimeout(() => { isLoading = false; levelTransitioning = false; }, 500);
@@ -953,8 +979,6 @@ function doDodge() {
     playSound('sine', 300, 150, 0.2, -200); 
 
     let moveDir = player.dir;
-    
-    // Check against global currentGp instead of creating a new array
     let isPullingBack = keys['KeyS'] || keys['ArrowDown'] || (currentGp && currentGp.axes.length > 1 && currentGp.axes[1] > 0.2);
     
     if (isPullingBack || joyForward < -0.1) moveDir += Math.PI; 
@@ -965,7 +989,7 @@ function doDodge() {
     
     for(let i=0; i<8; i++) {
         let ang = moveDir + Math.PI + (Math.random()-0.5); 
-        particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.1, vy: Math.sin(ang)*0.1, l: 0.8, e: "💨", scale: 0.5, isParticle: true});
+        emitParticle(player.x, player.y, Math.cos(ang)*0.1, Math.sin(ang)*0.1, 0.8, "💨", 0.5);
     }
 }
 
@@ -1055,20 +1079,20 @@ function doBoop() {
     if (currentToy === "🎵") {
         for(let i=0; i<24; i++) {
             let ang = (i / 24) * Math.PI * 2;
-            particles.push({x: player.x, y: player.y, vx: Math.cos(ang)*0.25, vy: Math.sin(ang)*0.25, l: 1.0, e: "🎶", scale: 0.6, isParticle: true});
+            emitParticle(player.x, player.y, Math.cos(ang)*0.25, Math.sin(ang)*0.25, 1.0, "🎶", 0.6);
         }
     } else if (currentToy === "🛏️") {
         for(let i=0; i<15; i++) {
             let ang = (player.dir - 0.6) + Math.random() * 1.2;
-            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.2, vy: Math.sin(ang)*0.2, l: 0.8, e: "🪶", scale: 0.4, isParticle: true});
+            emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.2, Math.sin(ang)*0.2, 0.8, "🪶", 0.4);
         }
     } else if (currentToy === "🍼") {
         let ang = player.dir + (Math.random()-0.5)*0.1;
-        particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.3, vy: Math.sin(ang)*0.3, l: 1.0, e: "💧", scale: 0.3, isParticle: true});
+        emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.3, Math.sin(ang)*0.3, 1.0, "💧", 0.3);
     } else {
         for(let i=0; i<8; i++) {
             let ang = (player.dir - 0.2) + Math.random() * 0.4;
-            particles.push({x: player.x + Math.cos(ang)*0.5, y: player.y + Math.sin(ang)*0.5, vx: Math.cos(ang)*0.18, vy: Math.sin(ang)*0.18, l: 0.85, e: "🌸", scale: 0.32, isParticle: true});
+            emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.18, Math.sin(ang)*0.18, 0.85, "🌸", 0.32);
         }
     }
 
@@ -1146,7 +1170,7 @@ function doBoop() {
 
 function spawnParticles(x, y, char, count) {
     for(let i=0; i<count; i++) {
-        particles.push({ x, y, vx:(Math.random()-0.5)*0.12, vy:(Math.random()-0.5)*0.12, l: 1.05, e: char, isParticle: true });
+        emitParticle(x, y, (Math.random()-0.5)*0.12, (Math.random()-0.5)*0.12, 1.05, char, 0.3);
     }
 }
 
@@ -1222,7 +1246,6 @@ document.getElementById('retry-btn').onclick = returnToMenu;
 function update() {
     if (!gameActive || isLoading || paused) return;
 
-    // Utilize the global Gamepad polled once per frame
     const gp = currentGp;
     let gpMoveY = 0, gpMoveX = 0, gpTurnX = 0, gpSprint = false;
 
@@ -1277,7 +1300,6 @@ function update() {
         player.score += untouchedSecs * 0.05; 
     }
 
-    // CACHED DODGE BUTTON STYLE - Avoids overwriting CSS 60x a second
     let dodgeReady = (Date.now() - lastDodgeTime >= 1000);
     if (dodgeReady !== lastDodgeReady) {
         if (!dodgeReady) {
@@ -1546,10 +1568,13 @@ function update() {
         if (removed || p.l <= 0) projectiles.splice(i, 1);
     }
 
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.l -= 0.035; 
-        if (p.l <= 0) particles.splice(i, 1);
+    // UPDATE POOLED PARTICLES (No splicing!)
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+        let p = particlePool[i];
+        if (p.active) {
+            p.x += p.vx; p.y += p.vy; p.l -= 0.035; 
+            if (p.l <= 0) p.active = false; 
+        }
     }
 }
 
@@ -1623,7 +1648,6 @@ function draw() {
 
         const wallTex = (hit === 9) ? pCanvas : tex;
         
-        // Safety check to prevent IndexSizeError if texture hasn't loaded yet
         if (wallTex.width > 0) {
             let texX = Math.floor(wallX * wallTex.width);
             ctx.globalAlpha = Math.max(0.18, 1 - (perpWallDist / 12));
@@ -1636,7 +1660,11 @@ function draw() {
     displayList.length = 0;
     for (let s of sprites) if (s.alive) displayList.push(s);
     for (let p of projectiles) displayList.push(p);
-    for (let p of particles) displayList.push(p);
+    
+    // ADD ACTIVE POOLED PARTICLES TO RENDER LIST
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+        if (particlePool[i].active) displayList.push(particlePool[i]);
+    }
 
     displayList.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2));
 
@@ -1758,7 +1786,6 @@ function drawMinimap() {
 }
 
 function loop() { 
-    // Constantly poll the Gamepad's start button exactly ONCE per frame
     currentGp = getGamepad();
     
     if (currentGp) {
