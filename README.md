@@ -15,7 +15,7 @@ You are the Plushie Protector. The Fuzzy Forest and its surrounding realms have 
 # Controls
 | Action | Control |
 |---|---|
-| Move | W A S D or On-Screen D-Pad |
+| Move | W A S D or touch controls |
 | Boop (Attack) | Space or ✨ BOOP! Button |
 | Sprint | Shift or 👟 Button |
 | Turn | A / D keys |
