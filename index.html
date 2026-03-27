@@ -941,7 +941,6 @@ function doDodge() {
 
     let moveDir = player.dir;
     
-    // Explicitly check for backwards intent across all inputs
     const gp = getGamepad();
     let isPullingBack = keys['KeyS'] || keys['ArrowDown'] || (gp && gp.axes.length > 1 && gp.axes[1] > 0.2);
     
@@ -957,7 +956,6 @@ function doDodge() {
     }
 }
 
-// Broadened keyboard listener to catch Steam Deck keyboard mapping wrappers
 window.onkeydown = e => { 
     if (e.code === 'Escape') togglePause();
     if (paused) return;
@@ -1214,42 +1212,51 @@ document.getElementById('retry-btn').onclick = returnToMenu;
 function update() {
     if (!gameActive || isLoading || paused) return;
 
-    // === BULLETPROOF GAMEPAD POLLING WITH REDUNDANT ACCESS CONTROLS ===
+    // === BULLETPROOF GAMEPAD POLLING WITH LINUX RAW SUPPORT ===
     const gp = getGamepad();
     let gpMoveY = 0, gpMoveX = 0, gpTurnX = 0, gpSprint = false;
 
     if (gp) {
         const deadzone = 0.15;
+        const isStandard = gp.mapping === 'standard';
         
         // Helper to safely read buttons AND analog triggers (L2/R2) acting as buttons
         const getBtn = (idx) => gp.buttons.length > idx && (gp.buttons[idx]?.pressed || (gp.buttons[idx]?.value !== undefined && gp.buttons[idx].value > 0.5));
 
-        // 1. D-PAD & LEFT STICK MOVEMENT (Redundant/Backup)
-        const lsX = gp.axes.length > 0 ? gp.axes[0] : 0;
-        const lsY = gp.axes.length > 1 ? gp.axes[1] : 0;
+        let ltPressed = getBtn(6);
+        let rtPressed = getBtn(7);
 
+        if (isStandard) {
+            if (Math.abs(gp.axes[1]) > deadzone) gpMoveY = gp.axes[1]; // LS Y
+            if (Math.abs(gp.axes[0]) > deadzone) gpMoveX = gp.axes[0]; // LS X
+            if (Math.abs(gp.axes[2]) > deadzone) gpTurnX = gp.axes[2]; // RS X
+        } else {
+            // Raw Linux Evdev Mapping (Steam Deck fallback)
+            // Axes: 0=LS_X, 1=LS_Y, 2=LT, 3=RS_X, 4=RS_Y, 5=RT
+            if (gp.axes.length > 1 && Math.abs(gp.axes[1]) > deadzone) gpMoveY = gp.axes[1];
+            if (gp.axes.length > 0 && Math.abs(gp.axes[0]) > deadzone) gpMoveX = gp.axes[0];
+            if (gp.axes.length > 3 && Math.abs(gp.axes[3]) > deadzone) gpTurnX = gp.axes[3];
+            
+            // Raw triggers rest at -1.0, fully pressed is 1.0. A pull > 0.0 is half-pressed.
+            if (gp.axes.length > 2 && gp.axes[2] > 0.0) ltPressed = true;
+            if (gp.axes.length > 5 && gp.axes[5] > 0.0) rtPressed = true;
+        }
+
+        // 1. D-PAD & STICKS (Redundant)
         if (getBtn(12)) gpMoveY = -1.0; // D-pad Up
         else if (getBtn(13)) gpMoveY = 1.0;  // D-pad Down
-        else if (Math.abs(lsY) > deadzone) gpMoveY = lsY; // Left Stick Y
 
         if (getBtn(14)) gpMoveX = -1.0; // D-pad Left
         else if (getBtn(15)) gpMoveX = 1.0;  // D-pad Right
-        else if (Math.abs(lsX) > deadzone) gpMoveX = lsX; // Left Stick X
-
-        // 2. RIGHT STICK TURNING
-        const rsX = gp.axes.length > 2 ? gp.axes[2] : 0;
-        const fallbackRsX = gp.axes.length > 3 ? gp.axes[3] : 0; // Sometimes Linux shifts right stick to axis 3
-        if (Math.abs(rsX) > deadzone) gpTurnX = rsX;
-        else if (Math.abs(fallbackRsX) > deadzone && Math.abs(fallbackRsX) > Math.abs(rsX)) gpTurnX = fallbackRsX;
 
         // 3. ACTION BUTTONS (with Trigger Backups)
         if (getBtn(10) || getBtn(4)) gpSprint = true; // L3 or LB
 
-        // FIRE (Boop): A (0), Right Trigger (7), or Right Bumper (5)
-        if (getBtn(0) || getBtn(7) || getBtn(5)) doBoop(); 
+        // FIRE (Boop): A (0), Right Trigger (7 or RT axis), or Right Bumper (5)
+        if (getBtn(0) || rtPressed || getBtn(5)) doBoop(); 
 
-        // DODGE: B (1), X (2), or Left Trigger (6)
-        if (getBtn(1) || getBtn(2) || getBtn(6)) doDodge(); 
+        // DODGE: B (1), X (2), or Left Trigger (6 or LT axis)
+        if (getBtn(1) || getBtn(2) || ltPressed) doDodge(); 
 
         // SWAP: Y (3)
         if (getBtn(3) && !lastGamepadSwap) {
