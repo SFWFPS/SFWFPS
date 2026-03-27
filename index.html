@@ -34,7 +34,6 @@
             flex-direction: column;
         }
 
-        /* iOS Fullscreen Fallback Class */
         .ios-fullscreen-fix {
             position: fixed !important;
             top: 0 !important;
@@ -372,7 +371,27 @@
             display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px;
         }
 
-        /* Landscape Optimization */
+        #gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+            gap: 14px;
+            width: 100%;
+            max-width: 440px;
+            margin: 0 auto;
+            padding: 0 10px;
+        }
+        .plushie-slot {
+            text-align: center;
+            background: rgba(255,255,255,0.08);
+            border: 3px solid #444;
+            border-radius: 12px;
+            padding: 10px 6px;
+            transition: all 0.2s;
+        }
+        .plushie-slot.collected {
+            border-color: var(--sky);
+        }
+
         @media (orientation: landscape) {
             #bottom-controls-overlay {
                 padding: 0 max(20px, env(safe-area-inset-right)) 8px max(20px, env(safe-area-inset-left));
@@ -409,7 +428,6 @@
             .diff-btn { width: 220px; padding: 8px 12px; font-size: 13px; margin: 4px auto; }
             .diff-btn small { display: none; }
 
-            /* Viewport/HUD Adjustments */
             #top-hud-overlay { top: 8px; padding: 6px 12px; }
             #joystick-container { width: 138px; height: 138px; }
             #joystick-knob { width: 54px; height: 54px; }
@@ -448,6 +466,10 @@
             <button onclick="showScoresMenu()" class="diff-btn" style="background: #2d1b2e; border: 2px solid var(--sky); margin-top: 15px;">
                 High Scores 🏆
             </button>
+
+            <button onclick="showGalleryMenu()" class="diff-btn" style="background: #2d1b2e; border: 2px solid #ffcc00; margin-top: 15px;">
+                Plushie Gallery 🧸
+            </button>
         </div>
     </div>
 
@@ -456,6 +478,15 @@
         <div id="scores-list"></div>
         <div class="overlay-btns">
             <button onclick="hideScoresMenu()" style="background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink);">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="gallery-menu" class="overlay" style="z-index: 250 !important;">
+        <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">PLUSHIE GALLERY 🧸</h1>
+        <div style="font-size: 15px; color: var(--pink); margin-bottom: 15px;">Collect them all across every quest!</div>
+        <div id="gallery-grid"></div>
+        <div class="overlay-btns">
+            <button onclick="hideGalleryMenu()" style="background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink);">CLOSE GALLERY</button>
         </div>
     </div>
 
@@ -519,6 +550,7 @@
         <div class="overlay-btns">
             <button id="share-btn">Share Your Quest 🪄</button>
             <button onclick="showScoresMenu()" style="background: #2d1b2e; border: 2px solid var(--sky); box-shadow: 0 0 20px var(--sky);">HIGH SCORES</button>
+            <button onclick="showGalleryMenu()" style="background: #2d1b2e; border: 2px solid #ffcc00; box-shadow: 0 0 20px #ffcc00;">PLUSHIE GALLERY 🧸</button>
             <button id="retry-btn">RESTART QUEST</button>
         </div>
     </div>
@@ -531,23 +563,18 @@ const particlePool = Array.from({ length: MAX_PARTICLES }, () => ({
 }));
 let poolIdx = 0;
 
-// O(1) Particle Spawning (Ring Buffer)
 function emitParticle(x, y, vx, vy, l, e, scale = 0.3) {
     let p = particlePool[poolIdx];
     p.active = true;
     p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.l = l; p.e = e; p.scale = scale;
-    
     poolIdx = (poolIdx + 1) % MAX_PARTICLES;
 }
 
 function resetParticles() {
-    for (let i = 0; i < MAX_PARTICLES; i++) {
-        particlePool[i].active = false;
-    }
+    for (let i = 0; i < MAX_PARTICLES; i++) particlePool[i].active = false;
     poolIdx = 0;
 }
 
-// DELTA TIME (this is the single biggest optimization)
 let lastTime = performance.now();
 
 // --- GLOBALLY CACHED DOM ELEMENTS ---
@@ -573,42 +600,24 @@ const pCtx = pCanvas.getContext('2d');
 canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80;
 
 let displayList = [];                      
-let lastHP = -1;
-let lastScoreText = '';
-let lastHi = -1;
-let lastMultText = '';
-let lastCombo = -1;
-let lastFaceUrl = '';
-let lastIsDodging = false;
-let lastVignetteOpacity = -1;
-let lastDodgeReady = true;
+let lastHP = -1, lastScoreText = '', lastHi = -1, lastMultText = '', lastCombo = -1;
+let lastFaceUrl = '', lastIsDodging = false, lastVignetteOpacity = -1, lastDodgeReady = true;
 
 let miniBgCanvas = document.createElement('canvas');
-miniBgCanvas.width = 80;
-miniBgCanvas.height = 80;
+miniBgCanvas.width = 80; miniBgCanvas.height = 80;
 let miniBgCtx = miniBgCanvas.getContext('2d');
 let minimapStaticDirty = true;
 
-// GAMEPAD STATE VARIABLES
-let currentGp = null;
-let lastGamepadSwap = false;
-let lastGamepadPause = false;
+let currentGp = null, lastGamepadSwap = false, lastGamepadPause = false;
 
-// SAFE GAMEPAD ACQUISITION
 function getGamepad() {
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-    for (let i = 0; i < gamepads.length; i++) {
-        if (gamepads[i]) return gamepads[i];
-    }
+    for (let i = 0; i < gamepads.length; i++) if (gamepads[i]) return gamepads[i];
     return null;
 }
 
-window.addEventListener("gamepadconnected", (e) => {
-    document.getElementById('bottom-controls-overlay').style.display = 'none';
-});
-window.addEventListener("gamepaddisconnected", (e) => {
-    document.getElementById('bottom-controls-overlay').style.display = 'flex';
-});
+window.addEventListener("gamepadconnected", () => document.getElementById('bottom-controls-overlay').style.display = 'none');
+window.addEventListener("gamepaddisconnected", () => document.getElementById('bottom-controls-overlay').style.display = 'flex');
 
 function redrawMinimapStatic() {
     const map = MAPS[levelIdx].m;
@@ -628,12 +637,8 @@ function redrawMinimapStatic() {
     }
 }
 
-let audioCtx;
-let paused = false;
-
-let cachedSkyGrad = null;
-let cachedSkyLevel = -1;
-let cachedFloorGrad = null;
+let audioCtx, paused = false;
+let cachedSkyGrad = null, cachedSkyLevel = -1, cachedFloorGrad = null;
 
 function playSound(type = 'sine', freq = 440, duration = 200, vol = 0.25, sweep = 0) {
     if (!audioCtx || paused) return;
@@ -641,10 +646,7 @@ function playSound(type = 'sine', freq = 440, duration = 200, vol = 0.25, sweep 
     osc.type = type;
     const now = audioCtx.currentTime;
     osc.frequency.setValueAtTime(freq, now);
-    if (sweep !== 0) {
-        const target = freq * Math.pow(2, sweep / 1200);
-        osc.frequency.exponentialRampToValueAtTime(target, now + duration / 1000);
-    }
+    if (sweep !== 0) osc.frequency.exponentialRampToValueAtTime(freq * Math.pow(2, sweep / 1200), now + duration / 1000);
     const gain = audioCtx.createGain();
     gain.gain.setValueAtTime(0.001, now);
     gain.gain.linearRampToValueAtTime(vol, now + 0.018);
@@ -663,18 +665,14 @@ function saveScore(newScore) {
     newScore = Math.floor(newScore);
     if (newScore <= 0) return false;
     let scores = getTopScores();
-    
     if (scores.length < 10 || newScore > scores[scores.length - 1].score) {
-        let initials = prompt("New High Score! Enter your initials (max 3):", "AAA");
-        if (!initials) initials = "???";
+        let initials = prompt("New High Score! Enter your initials (max 3):", "AAA") || "???";
         initials = initials.substring(0, 3).toUpperCase();
-        
         scores.push({ name: initials, score: newScore });
         scores.sort((a, b) => b.score - a.score);
         scores = scores.slice(0, 10);
-        
         localStorage.setItem('sfwFpsTopScores', JSON.stringify(scores));
-        localStorage.setItem('sfwFpsHiScore', scores[0].score); 
+        localStorage.setItem('sfwFpsHiScore', scores[0].score);
         return true;
     }
     return false;
@@ -682,22 +680,52 @@ function saveScore(newScore) {
 
 function showScoresMenu() {
     let scores = getTopScores();
-    let html = "";
-    if (scores.length === 0) {
-        html = "<div style='text-align:center;'>No scores yet! Get Booping!</div>";
-    } else {
-        scores.forEach((s, i) => {
-            let num = (i + 1).toString().padStart(2, '0');
-            html += `<div class="score-row"><span>${num}. ${s.name}</span> <span style="color:var(--pink); text-shadow: 0 0 5px var(--pink);">${s.score}</span></div>`;
-        });
-    }
+    let html = scores.length === 0 
+        ? "<div style='text-align:center;'>No scores yet! Get Booping!</div>" 
+        : scores.map((s, i) => `<div class="score-row"><span>${(i+1).toString().padStart(2,'0')}. ${s.name}</span> <span style="color:var(--pink); text-shadow: 0 0 5px var(--pink);">${s.score}</span></div>`).join('');
     document.getElementById('scores-list').innerHTML = html;
     document.getElementById('scores-menu').style.display = 'flex';
 }
 
-function hideScoresMenu() {
-    document.getElementById('scores-menu').style.display = 'none';
+function hideScoresMenu() { document.getElementById('scores-menu').style.display = 'none'; }
+
+// ========================
+// PLUSHIE GALLERY SYSTEM
+// ========================
+const PLUSHIES = [
+    {id:0,emoji:"🧸",name:"Sir Fluffington",desc:"Forest founder"},
+    {id:1,emoji:"🐻",name:"Berry Bear",desc:"Honey hoarder"},
+    {id:2,emoji:"🐼",name:"Pandy",desc:"Bamboo dreamer"},
+    {id:3,emoji:"🐨",name:"Koala Kiki",desc:"Eucalyptus expert"},
+    {id:4,emoji:"🦒",name:"Giraffic",desc:"Tall tales teller"},
+    {id:5,emoji:"🐘",name:"Ellie",desc:"Trunk tickler"},
+    {id:6,emoji:"🐰",name:"Bouncy",desc:"Carrot collector"},
+    {id:7,emoji:"🦄",name:"Sparkle Hoof",desc:"Rainbow rider"},
+    {id:8,emoji:"🐱",name:"Mittens",desc:"Purrfect pillow"},
+    {id:9,emoji:"🐶",name:"Woofles",desc:"Bone booper"},
+    {id:10,emoji:"🦁",name:"Leo the Brave",desc:"Mane of courage"},
+    {id:11,emoji:"🐯",name:"Tiggy",desc:"Stripey superstar"}
+];
+
+function showGalleryMenu() {
+    const grid = document.getElementById('gallery-grid');
+    grid.innerHTML = '';
+    let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
+    PLUSHIES.forEach(p => {
+        const isCollected = collection.includes(p.id);
+        const slot = document.createElement('div');
+        slot.className = `plushie-slot ${isCollected ? 'collected' : ''}`;
+        slot.innerHTML = `
+            <div style="font-size:42px;margin-bottom:6px;filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};">${p.emoji}</div>
+            <div style="font-size:14px;font-weight:bold;color:white;">${p.name}</div>
+            <div style="font-size:11px;color:${isCollected?'var(--pink)':'#777'};margin-top:2px;">${isCollected?p.desc:'??? Locked ???'}</div>
+        `;
+        grid.appendChild(slot);
+    });
+    document.getElementById('gallery-menu').style.display = 'flex';
 }
+
+function hideGalleryMenu() { document.getElementById('gallery-menu').style.display = 'none'; }
 
 const assets = {
     bearIdle: new Image(), bearAtk: new Image(),
@@ -727,24 +755,36 @@ assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/head
 
 const MAPS = [
     { n: "The Fuzzy Forest", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [
-        {x:6.5,y:1.5,e:"BEAR"},
-        {x:4.5,y:5.5,e:"SMALL"},
-        {x: 2.5, y: 1.5, e: "🍼", pickup: true}, 
-        {x: 3.5, y: 1.5, e: "🛏️", pickup: true}, 
-        {x: 4.5, y: 1.5, e: "🎵", pickup: true},
-        {x: 5.5, y: 1.5, e: "📦", pickup: true} 
+        {x:6.5,y:1.5,e:"BEAR"},{x:4.5,y:5.5,e:"SMALL"},
+        {x:2.5,y:1.5,e:"🍼",pickup:true},{x:3.5,y:1.5,e:"🛏️",pickup:true},
+        {x:4.5,y:1.5,e:"🎵",pickup:true},{x:5.5,y:1.5,e:"📦",pickup:true},
+        {x:2.8,y:5.2,e:"🧸",plushieId:0,pickup:true},
+        {x:5.2,y:3.8,e:"🐻",plushieId:1,pickup:true},
+        {x:4.1,y:2.2,e:"🐼",plushieId:2,pickup:true}
     ] },
-    { n: "The Velvet Vaults", tex: assets.wall2, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [{x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"}] },
-    { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [{x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"}] },
-    { n: "Sugar Sanctuary", tex: assets.wall2, m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.1], enemies: [{x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true}], isSecret:true },
-    { n: "The Starry Summit", tex: assets.wall3, m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], boss: {x:8,y:2.5,e:"BOSS_FINAL"} }
+    { n: "The Velvet Vaults", tex: assets.wall2, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [
+        {x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"},
+        {x:2.2,y:2.8,e:"🦒",plushieId:4,pickup:true}
+    ] },
+    { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [
+        {x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"},
+        {x:2.5,y:2.5,e:"🐘",plushieId:5,pickup:true},
+        {x:5.8,y:3.2,e:"🐰",plushieId:6,pickup:true}
+    ] },
+    { n: "Sugar Sanctuary", tex: assets.wall2, m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5,2.1], enemies: [
+        {x:1.5,y:1.5,e:"🐘"},{x:3.5,y:1.5,e:"🐘"},{x:2.5,y:1.5,e:"🍰",pickup:true},
+        {x:3.8,y:2.2,e:"🐱",plushieId:8,pickup:true},
+        {x:1.8,y:2.2,e:"🐶",plushieId:9,pickup:true}
+    ], isSecret:true },
+    { n: "The Starry Summit", tex: assets.wall3, m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], enemies: [
+        {x:3.5,y:1.8,e:"🦁",plushieId:10,pickup:true}
+    ], boss: {x:8,y:2.5,e:"BOSS_FINAL"} }
 ];
 
 let levelIdx = 0, player, sprites = [], projectiles = [], keys = {};
-let zBuf = new Float32Array(400); // Optimization: Typed array for zBuffer
+let zBuf = new Float32Array(400);
 let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, isLoading = false, maxMultSeen = 1;
-let levelTransitioning = false, portalActive = false;  
-let hitFlash = 0;
+let levelTransitioning = false, portalActive = false, hitFlash = 0;
 let difficultyMult = 1.5;
 
 const TOYS = {
@@ -758,17 +798,9 @@ let currentToy = "🪄";
 let unlockedToys = { "🪄": true, "🍼": false, "🛏️": false, "🎵": false };
 let toyAmmo = { "🪄": Infinity, "🍼": 0, "🛏️": 0, "🎵": 0 };
 let weaponUsage = { "🪄": 0, "🍼": 0, "🛏️": 0, "🎵": 0 };
-let lastBoopTime = 0;
-let lastDamageTime = 0; 
-
-let isDodging = false;
-let dodgeTime = 0;
-let lastDodgeTime = 0;
-let dodgeDx = 0, dodgeDy = 0;
-
-let totalBoops = 0;
-let highestCombo = 0;
-let totalPlushiesSaved = 0;
+let lastBoopTime = 0, lastDamageTime = 0;
+let isDodging = false, dodgeTime = 0, lastDodgeTime = 0, dodgeDx = 0, dodgeDy = 0;
+let totalBoops = 0, highestCombo = 0, totalPlushiesSaved = 0;
 
 let joyActive = false, joyForward = 0, joyTurn = 0, currentJoyX = 0, currentJoyY = 0;
 const JOY_RADIUS = 60;
@@ -786,64 +818,36 @@ function handleOrientationChange(e) {
     if (e.matches && isMobileDevice && gameActive && !paused) {
         const doc = window.document;
         const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-        if (!currentlyFullscreen) {
-            toggleFullscreen();
-        }
+        if (!currentlyFullscreen) toggleFullscreen();
     }
 }
 orientationMedia.addEventListener("change", handleOrientationChange);
 
 if (orientationMedia.matches && isMobileDevice) {
-    setTimeout(() => {
-        if (gameActive && !paused) {
-            const doc = window.document;
-            const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-            if (!currentlyFullscreen) {
-                toggleFullscreen();
-            }
-        }
-    }, 1200);
+    setTimeout(() => { if (gameActive && !paused) toggleFullscreen(); }, 1200);
 }
 
 function togglePause() {
     if (!gameActive || isLoading) return;
     paused = !paused;
     document.getElementById('pause-menu').style.display = paused ? 'flex' : 'none';
-    if (audioCtx) {
-        if (paused) audioCtx.suspend();
-        else audioCtx.resume();
-    }
+    if (audioCtx) paused ? audioCtx.suspend() : audioCtx.resume();
 }
 
 function toggleFullscreen() {
-    const doc = window.document;
-    const docEl = doc.documentElement;
-    const vp = document.getElementById('viewport');
-
-    const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
-    const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
-
-    if (requestFullScreen) {
+    const doc = window.document, docEl = doc.documentElement, vp = document.getElementById('viewport');
+    const request = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
+    const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+    if (request) {
         if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-            requestFullScreen.call(docEl).catch(err => {
-                applyiOSFullscreenFallback(vp);
-            });
-        } else {
-            if (cancelFullScreen) cancelFullScreen.call(doc);
-            vp.classList.remove('ios-fullscreen-fix');
-        }
-    } else {
-        applyiOSFullscreenFallback(vp);
-    }
+            request.call(docEl).catch(() => applyiOSFullscreenFallback(vp));
+        } else if (cancel) cancel.call(doc);
+    } else applyiOSFullscreenFallback(vp);
 }
 
 function applyiOSFullscreenFallback(el) {
-    if (el.classList.contains('ios-fullscreen-fix')) {
-        el.classList.remove('ios-fullscreen-fix');
-    } else {
-        el.classList.add('ios-fullscreen-fix');
-        window.scrollTo(0, 0);
-    }
+    el.classList.toggle('ios-fullscreen-fix');
+    if (el.classList.contains('ios-fullscreen-fix')) window.scrollTo(0, 0);
 }
 
 function selectDifficulty(mult) {
@@ -856,7 +860,7 @@ function selectDifficulty(mult) {
 
 function returnToMenu() {
     gameActive = false; paused = false;
-    sprites = []; projectiles = []; 
+    sprites = []; projectiles = [];
     resetParticles();
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
@@ -868,16 +872,13 @@ function initGame() {
     levelIdx = 0; gameActive = true; isLoading = false; maxMultSeen = 1; levelTransitioning = false;
     portalActive = false; hitFlash = 0; paused = false;
     resetParticles();
-    
     currentToy = "🪄";
     unlockedToys = { "🪄": true, "🍼": false, "🛏️": false, "🎵": false };
     toyAmmo = { "🪄": Infinity, "🍼": 0, "🛏️": 0, "🎵": 0 };
     weaponUsage = { "🪄": 0, "🍼": 0, "🛏️": 0, "🎵": 0 };
     totalBoops = 0; highestCombo = 0; totalPlushiesSaved = 0;
-    
     lastDamageTime = Date.now();
     isDodging = false; dodgeTime = 0; lastDodgeTime = 0; dodgeDx = 0; dodgeDy = 0;
-
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
     loadLevel(0);
@@ -886,7 +887,7 @@ function initGame() {
 function loadLevel(idx) {
     if (levelTransitioning || idx >= MAPS.length) return;
     levelTransitioning = true; isLoading = true; levelIdx = idx; const l = MAPS[idx];
-    player.x = l.start[0]; player.y = l.start[1]; portalActive = false;  
+    player.x = l.start[0]; player.y = l.start[1]; portalActive = false;
 
     const qtyMult = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
     sprites = [];
@@ -904,18 +905,19 @@ function loadLevel(idx) {
         let attempts = 0;
         while (attempts < 50) {
             const pos = floorTiles[Math.floor(Math.random() * floorTiles.length)];
-            let tooClose = false;
-            for (let ex of excludeList) {
-                if ((pos.x - ex.x)**2 + (pos.y - ex.y)**2 < 2.8) { tooClose = true; break; }
-            }
-            if (!tooClose) return {x: pos.x, y: pos.y};
+            if (!excludeList.some(ex => (pos.x - ex.x)**2 + (pos.y - ex.y)**2 < 2.8)) return {x: pos.x, y: pos.y};
             attempts++;
         }
         return floorTiles[Math.floor(Math.random() * floorTiles.length)];
     }
 
     (l.enemies || []).forEach(original => {
-        if (original.pickup) { sprites.push({...original, alive: true}); return; }
+        if (original.pickup) {
+            const mx = Math.floor(original.x), my = Math.floor(original.y);
+            if (!mapData[my] || mapData[my][mx] !== 0) return;
+            sprites.push({...original, alive: true});
+            return;
+        }
         const placedPositions = [];
         for (let i = 0; i < qtyMult; i++) {
             const spawnPos = i === 0 ? {x: original.x, y: original.y} : getRandomSpreadPosition(placedPositions);
@@ -923,6 +925,19 @@ function loadLevel(idx) {
             sprites.push({ ...original, x: spawnPos.x, y: spawnPos.y, hp: Math.round(3 * difficultyMult), alive: true, lastShot: Date.now() + 2000 + Math.random() * 1200, atkTimer: 0 });
         }
     });
+
+    // CONDITIONAL PLUSHIE SPAWNS (per user request)
+    if (idx === 4) {  // boss floor only
+        if (difficultyMult === 1.5) {
+            // Koala Kiki ONLY in A Little Eepy (normal) boss area
+            sprites.push({x: 3.5, y: 3.5, e: "🐨", plushieId: 3, pickup: true, alive: true});
+        }
+        if (difficultyMult === 2.0) {
+            // Sparkle Hoof + Tiggy ONLY in Naptime (hard) boss floor
+            sprites.push({x: 2.5, y: 4.2, e: "🦄", plushieId: 7, pickup: true, alive: true});
+            sprites.push({x: 7.5, y: 1.8, e: "🐯", plushieId: 11, pickup: true, alive: true});
+        }
+    }
 
     if (l.boss) {
         const bossMaxHp = Math.round(28 * difficultyMult);
@@ -944,12 +959,8 @@ function showLevelCard(name, sub) {
 }
 
 function swapWeapon(index) {
-    if (!unlockedToys[currentToy] || (toyAmmo[currentToy] <= 0 && currentToy !== "🪄")) {
-        currentToy = "🪄";
-    }
-
+    if (!unlockedToys[currentToy] || (toyAmmo[currentToy] <= 0 && currentToy !== "🪄")) currentToy = "🪄";
     const toysList = ["🪄", "🍼", "🛏️", "🎵"];
-
     if (index !== undefined) {
         if (unlockedToys[toysList[index]] && (toyAmmo[toysList[index]] > 0 || toysList[index] === "🪄")) {
             currentToy = toysList[index];
@@ -961,48 +972,34 @@ function swapWeapon(index) {
             let nextIdx = (curIdx + i) % 4;
             const nextToy = toysList[nextIdx];
             if (unlockedToys[nextToy] && (toyAmmo[nextToy] > 0 || nextToy === "🪄")) {
-                if (nextToy !== currentToy) {
-                    currentToy = nextToy;
-                    playSound('sine', 800, 50, 0.1);
-                    break;
-                }
+                if (nextToy !== currentToy) { currentToy = nextToy; playSound('sine', 800, 50, 0.1); break; }
             }
         }
     }
 }
 
 function doDodge() {
-    if (!gameActive || isLoading || paused || isDodging) return;
-    if (Date.now() - lastDodgeTime < 1000) return; 
-
+    if (!gameActive || isLoading || paused || isDodging || Date.now() - lastDodgeTime < 1000) return;
     lastDodgeTime = Date.now();
-    isDodging = true;
-    dodgeTime = 12; 
-    
-    playSound('sine', 300, 150, 0.2, -200); 
-
+    isDodging = true; dodgeTime = 12;
+    playSound('sine', 300, 150, 0.2, -200);
     let moveDir = player.dir;
     let isPullingBack = keys['KeyS'] || keys['ArrowDown'] || (currentGp && currentGp.axes.length > 1 && currentGp.axes[1] > 0.2);
-    
-    if (isPullingBack || joyForward < -0.1) moveDir += Math.PI; 
-    
+    if (isPullingBack || joyForward < -0.1) moveDir += Math.PI;
     dodgeDx = Math.cos(moveDir) * 0.22;
     dodgeDy = Math.sin(moveDir) * 0.22;
-    
     for(let i=0; i<8; i++) {
-        let ang = moveDir + Math.PI + (Math.random()-0.5); 
+        let ang = moveDir + Math.PI + (Math.random()-0.5);
         emitParticle(player.x, player.y, Math.cos(ang)*0.1, Math.sin(ang)*0.1, 0.8, "💨", 0.5);
     }
 }
 
-window.onkeydown = e => { 
+window.onkeydown = e => {
     if (e.code === 'Escape') togglePause();
     if (paused) return;
-    keys[e.code] = true; 
-    
-    if (e.code === 'Space' || e.code === 'Enter') doBoop(); 
+    keys[e.code] = true;
+    if (e.code === 'Space' || e.code === 'Enter') doBoop();
     if (e.code === 'KeyF' || e.code === 'ShiftRight') doDodge();
-    
     if (e.code === 'Digit1') swapWeapon(0);
     if (e.code === 'Digit2') swapWeapon(1);
     if (e.code === 'Digit3') swapWeapon(2);
@@ -1013,10 +1010,8 @@ window.onkeyup = e => keys[e.code] = false;
 
 domBoopBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doBoop(); });
 domBoopBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doBoop(); }, { passive: false });
-
 domSwapBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) swapWeapon(); });
 domSwapBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) swapWeapon(); }, { passive: false });
-
 domDodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doDodge(); });
 domDodgeBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doDodge(); }, { passive: false });
 
@@ -1038,19 +1033,11 @@ function setupJoystick() {
     });
 }
 function updateJoystick(e) {
-    let dx = e.clientX - joyCenterX; let dy = e.clientY - joyCenterY;
+    let dx = e.clientX - joyCenterX, dy = e.clientY - joyCenterY;
     let dist = Math.hypot(dx, dy);
     if (dist > JOY_RADIUS) { dx = dx * JOY_RADIUS / dist; dy = dy * JOY_RADIUS / dist; }
     currentJoyX = dx; currentJoyY = dy;
-    
-    // Add a deadzone to prevent slippery micro-movements
-    if (dist < 12) {
-        joyForward = 0;
-        joyTurn = 0;
-    } else {
-        joyForward = -dy / JOY_RADIUS; 
-        joyTurn = dx / JOY_RADIUS;
-    }
+    if (dist < 12) { joyForward = 0; joyTurn = 0; } else { joyForward = -dy / JOY_RADIUS; joyTurn = dx / JOY_RADIUS; }
     joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 }
 setupJoystick();
@@ -1061,74 +1048,46 @@ viewportEl.addEventListener('pointerdown', e => {
     turnPointerId = e.pointerId; turnActive = true; lastTurnClientX = e.clientX;
 });
 document.addEventListener('pointermove', e => {
-    if (turnActive && turnPointerId === e.pointerId) {
-        player.dir += (e.clientX - lastTurnClientX) * 0.002; // Reduced from 0.003
-        lastTurnClientX = e.clientX;
-    }
+    if (turnActive && turnPointerId === e.pointerId) player.dir += (e.clientX - lastTurnClientX) * 0.002;
+    lastTurnClientX = e.clientX;
 });
 document.addEventListener('pointerup', e => { if (turnPointerId === e.pointerId) { turnActive = false; turnPointerId = null; } });
 
 function doBoop() {
     if (!gameActive || isLoading || paused) return;
-    
-    if (!unlockedToys[currentToy] || (toyAmmo[currentToy] <= 0 && currentToy !== "🪄")) {
-        currentToy = "🪄";
-    }
-
+    if (!unlockedToys[currentToy] || (toyAmmo[currentToy] <= 0 && currentToy !== "🪄")) currentToy = "🪄";
     let toy = TOYS[currentToy];
-    if (Date.now() - lastBoopTime < toy.cooldown) return; 
-
+    if (Date.now() - lastBoopTime < toy.cooldown) return;
     lastBoopTime = Date.now();
     weaponUsage[currentToy]++;
     attackAnim = 1.0;
-    
     let freq = currentToy === "🛏️" ? 300 : (currentToy === "🍼" ? 1200 : 920);
     playSound('sine', freq, 55, 0.28);
-    if (currentToy === "🎵") playSound('triangle', 600, 300, 0.3); 
+    if (currentToy === "🎵") playSound('triangle', 600, 300, 0.3);
 
-    if (currentToy === "🎵") {
-        for(let i=0; i<24; i++) {
-            let ang = (i / 24) * Math.PI * 2;
-            emitParticle(player.x, player.y, Math.cos(ang)*0.25, Math.sin(ang)*0.25, 1.0, "🎶", 0.6);
-        }
-    } else if (currentToy === "🛏️") {
-        for(let i=0; i<15; i++) {
-            let ang = (player.dir - 0.6) + Math.random() * 1.2;
-            emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.2, Math.sin(ang)*0.2, 0.8, "🪶", 0.4);
-        }
-    } else if (currentToy === "🍼") {
-        let ang = player.dir + (Math.random()-0.5)*0.1;
-        emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.3, Math.sin(ang)*0.3, 1.0, "💧", 0.3);
-    } else {
-        for(let i=0; i<8; i++) {
-            let ang = (player.dir - 0.2) + Math.random() * 0.4;
-            emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.18, Math.sin(ang)*0.18, 0.85, "🌸", 0.32);
-        }
-    }
+    if (currentToy === "🎵") for(let i=0; i<24; i++) { let ang = (i / 24) * Math.PI * 2; emitParticle(player.x, player.y, Math.cos(ang)*0.25, Math.sin(ang)*0.25, 1.0, "🎶", 0.6); }
+    else if (currentToy === "🛏️") for(let i=0; i<15; i++) { let ang = (player.dir - 0.6) + Math.random() * 1.2; emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.2, Math.sin(ang)*0.2, 0.8, "🪶", 0.4); }
+    else if (currentToy === "🍼") { let ang = player.dir + (Math.random()-0.5)*0.1; emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.3, Math.sin(ang)*0.3, 1.0, "💧", 0.3); }
+    else for(let i=0; i<8; i++) { let ang = (player.dir - 0.2) + Math.random() * 0.4; emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.18, Math.sin(ang)*0.18, 0.85, "🌸", 0.32); }
 
     sprites.forEach(s => {
         if (!s.alive || s.pickup) return;
         let d = Math.hypot(s.x - player.x, s.y - player.y);
         if (d >= toy.range || d < 0.01) return;
-        
         let angToEnemy = Math.atan2(s.y - player.y, s.x - player.x);
         let angleDiff = Math.abs(angToEnemy - player.dir);
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        
         if (!toy.isAoE && angleDiff >= toy.spread) return;
 
-        let dirX = (s.x - player.x) / d;
-        let dirY = (s.y - player.y) / d;
-        
+        let dirX = (s.x - player.x) / d, dirY = (s.y - player.y) / d;
         const map = MAPS[levelIdx].m;
         let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
         const deltaDistX = dirX === 0 ? 999999 : Math.abs(1 / dirX);
         const deltaDistY = dirY === 0 ? 999999 : Math.abs(1 / dirY);
-        let stepX = dirX < 0 ? -1 : 1; let stepY = dirY < 0 ? -1 : 1;
+        let stepX = dirX < 0 ? -1 : 1, stepY = dirY < 0 ? -1 : 1;
         let sideDistX = dirX < 0 ? (player.x - mapX) * deltaDistX : (mapX + 1.0 - player.x) * deltaDistX;
         let sideDistY = dirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1.0 - player.y) * deltaDistY;
-        
-        let wallDist = 9999; let steps = 0; let side = 0;
+        let wallDist = 9999, steps = 0, side = 0;
         while (steps < 60) {
             steps++;
             if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
@@ -1137,7 +1096,6 @@ function doBoop() {
                 wallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY; break;
             }
         }
-        
         if (wallDist < d - 0.4) return;
 
         s.hp -= toy.dmg;
@@ -1149,39 +1107,28 @@ function doBoop() {
             s.alive = false;
             playSound('sine', 340, 380, 0.26, -240);
             player.score += (s.type === 'boss' ? 2000 : 220) * player.mult;
-            
-            totalBoops++;
-            totalPlushiesSaved++;
-            
+            totalBoops++; totalPlushiesSaved++;
             spawnParticles(s.x, s.y, "☁️", 14);
             if (!s.type) {
-                let healthDropChance = player.hp <= 5 ? 0.60 : 0.25; 
+                let healthDropChance = player.hp <= 5 ? 0.60 : 0.25;
                 let roll = Math.random();
-                
-                if (roll < healthDropChance) {
-                    sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true});
-                } else if (roll < healthDropChance + 0.15) {
-                    sprites.push({x: s.x, y: s.y, e: "📦", pickup: true, alive: true}); 
-                } else if (roll < healthDropChance + 0.20) {
+                if (roll < healthDropChance) sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true});
+                else if (roll < healthDropChance + 0.15) sprites.push({x: s.x, y: s.y, e: "📦", pickup: true, alive: true});
+                else if (roll < healthDropChance + 0.20) {
                     const toysList = ["🍼", "🛏️", "🎵"];
-                    const droppedToy = toysList[Math.floor(Math.random() * toysList.length)];
-                    sprites.push({x: s.x, y: s.y, e: droppedToy, pickup: true, alive: true});
+                    sprites.push({x: s.x, y: s.y, e: toysList[Math.floor(Math.random() * toysList.length)], pickup: true, alive: true});
                 }
             }
             checkWin();
         }
     });
 
-    if (currentToy !== "🪄") toyAmmo[currentToy]--; 
-    if (toyAmmo[currentToy] <= 0 && currentToy !== "🪄") {
-        swapWeapon(); 
-    }
+    if (currentToy !== "🪄") toyAmmo[currentToy]--;
+    if (toyAmmo[currentToy] <= 0 && currentToy !== "🪄") swapWeapon();
 }
 
 function spawnParticles(x, y, char, count) {
-    for(let i=0; i<count; i++) {
-        emitParticle(x, y, (Math.random()-0.5)*0.12, (Math.random()-0.5)*0.12, 1.05, char, 0.3);
-    }
+    for(let i=0; i<count; i++) emitParticle(x, y, (Math.random()-0.5)*0.12, (Math.random()-0.5)*0.12, 1.05, char, 0.3);
 }
 
 function checkWin() {
@@ -1192,14 +1139,14 @@ function checkWin() {
             let exitX = 6.5, exitY = 5.5;
             if (levelIdx === 1) { exitX = 6.5; exitY = 1.5; }
             if (levelIdx === 2) { exitX = 7.5; exitY = 3.5; }
-            if (levelIdx === 3) { exitX = 2.5; exitY = 0.5; } 
+            if (levelIdx === 3) { exitX = 2.5; exitY = 0.5; }
             const map = MAPS[levelIdx].m;
             const tx = Math.floor(exitX), ty = Math.floor(exitY);
             if (map[ty] && map[ty][tx] !== undefined) {
                 map[ty][tx] = 9;
-                minimapStaticDirty = true;   
+                minimapStaticDirty = true;
             }
-            portalActive = true; 
+            portalActive = true;
             playSound('sine', 880, 120, 0.32);
             setTimeout(() => playSound('sine', 1320, 250, 0.28), 80);
             spawnParticles(exitX, exitY, "✨", 25);
@@ -1213,35 +1160,27 @@ function showEnd(msg) {
     const shareBtn = document.getElementById('share-btn');
     const isWin = msg.includes("VICTORY");
     overlay.style.borderColor = isWin ? "var(--sky)" : "var(--hot-pink)";
-    
     let currentScore = Math.floor(player.score);
-    saveScore(currentScore); 
+    saveScore(currentScore);
     let highScore = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
-    
     overlay.style.display = 'flex';
     document.getElementById('status-msg').textContent = msg;
-    
     let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
     if (isWin) {
         const finalCombo = Math.floor(highestCombo);
-
-        let favWeapon = "🪄";
-        let maxUses = -1;
-        for (let w in weaponUsage) {
-            if (weaponUsage[w] > maxUses) {
-                maxUses = weaponUsage[w];
-                favWeapon = w;
-            }
-        }
+        let favWeapon = "🪄", maxUses = -1;
+        for (let w in weaponUsage) if (weaponUsage[w] > maxUses) { maxUses = weaponUsage[w]; favWeapon = w; }
         let weaponName = TOYS[favWeapon].name;
-
         statsHTML += `<br><br><span style="color:var(--sky);">🪄 Total Boops: ${totalBoops}</span>`;
         statsHTML += `<br><span style="color:#ffcc00;">🔥 Highest Combo: ${finalCombo}%</span>`;
         statsHTML += `<br><span style="color:var(--hot-pink);">🧸 Plushies Saved: ${totalPlushiesSaved}</span>`;
         statsHTML += `<br><span style="color:#b28dff;">⭐ Most Used: ${favWeapon} ${weaponName}</span>`;
+        const collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
+        const collectedCount = collection.length;
+        statsHTML += `<br><span style="color:#ffcc00;">🧸 Plushies Collected: <strong>${collectedCount}/12</strong></span>`;
+        if (collectedCount === 12) statsHTML += `<br><span style="color:#ffd700; font-size:15px;">🌟 ALL PLUSHIES SAVED! YOU ARE A LEGEND! 🌟</span>`;
     }
     document.getElementById('final-stats').innerHTML = statsHTML;
-    
     shareBtn.onclick = () => {
         const fullPost = `${isWin ? '🏆' : '🧸'} Score: ${currentScore} in SFWFPS!\nhttps://sfwfps.com`;
         navigator.clipboard.writeText(fullPost).then(() => {
@@ -1258,36 +1197,20 @@ function update(dt = 1) {
 
     const gp = currentGp;
     let gpMoveY = 0, gpMoveX = 0, gpTurnX = 0, gpSprint = false;
-
     if (gp) {
         const deadzone = 0.15;
-        const axis0 = gp.axes.length > 0 ? gp.axes[0] : 0;
-        const axis1 = gp.axes.length > 1 ? gp.axes[1] : 0;
-        const axis2 = gp.axes.length > 2 ? gp.axes[2] : 0;
-        const axis3 = gp.axes.length > 3 ? gp.axes[3] : 0;
-        const axis4 = gp.axes.length > 4 ? gp.axes[4] : 0;
-
-        if (Math.abs(axis1) > deadzone) gpMoveY = axis1; 
-        if (Math.abs(axis0) > deadzone) gpMoveX = axis0; 
-        
+        const axis0 = gp.axes[0] || 0, axis1 = gp.axes[1] || 0, axis2 = gp.axes[2] || 0, axis3 = gp.axes[3] || 0, axis4 = gp.axes[4] || 0;
+        if (Math.abs(axis1) > deadzone) gpMoveY = axis1;
+        if (Math.abs(axis0) > deadzone) gpMoveX = axis0;
         if (Math.abs(axis2) > deadzone) gpTurnX = axis2;
         else if (Math.abs(axis3) > deadzone && Math.abs(axis3) > Math.abs(axis2)) gpTurnX = axis3;
         else if (Math.abs(axis4) > deadzone && Math.abs(axis4) > Math.abs(axis2)) gpTurnX = axis4;
-
-        const getBtn = (idx) => gp.buttons.length > idx && gp.buttons[idx]?.pressed;
-
-        if (getBtn(10) || getBtn(6)) gpSprint = true; 
-        
-        if (getBtn(7) || getBtn(0) || getBtn(5)) doBoop(); 
-        if (getBtn(1) || getBtn(2)) doDodge(); 
-        
-        if ((getBtn(3) || getBtn(4)) && !lastGamepadSwap) { 
-            swapWeapon();
-            lastGamepadSwap = true;
-        } else if (!getBtn(3) && !getBtn(4)) {
-            lastGamepadSwap = false;
-        }
-
+        const getBtn = idx => gp.buttons.length > idx && gp.buttons[idx]?.pressed;
+        if (getBtn(10) || getBtn(6)) gpSprint = true;
+        if (getBtn(7) || getBtn(0) || getBtn(5)) doBoop();
+        if (getBtn(1) || getBtn(2)) doDodge();
+        if ((getBtn(3) || getBtn(4)) && !lastGamepadSwap) { swapWeapon(); lastGamepadSwap = true; }
+        else if (!getBtn(3) && !getBtn(4)) lastGamepadSwap = false;
         if (getBtn(12)) gpMoveY = -1.0;
         if (getBtn(13)) gpMoveY = 1.0;
         if (getBtn(14)) gpMoveX = -1.0;
@@ -1306,31 +1229,22 @@ function update(dt = 1) {
     };
 
     let untouchedSecs = (Date.now() - lastDamageTime) / 1000;
-    if (untouchedSecs > 5 && player.hp > 0 && !levelTransitioning) {
-        player.score += untouchedSecs * 0.05; 
-    }
+    if (untouchedSecs > 5 && player.hp > 0 && !levelTransitioning) player.score += untouchedSecs * 0.05;
 
     let dodgeReady = (Date.now() - lastDodgeTime >= 1000);
     if (dodgeReady !== lastDodgeReady) {
-        if (!dodgeReady) {
-            domDodgeBtn.style.opacity = 0.4;
-            domDodgeBtn.style.filter = "grayscale(100%)";
-        } else {
-            domDodgeBtn.style.opacity = 1;
-            domDodgeBtn.style.filter = "none";
-        }
+        domDodgeBtn.style.opacity = dodgeReady ? 1 : 0.4;
+        domDodgeBtn.style.filter = dodgeReady ? "none" : "grayscale(100%)";
         lastDodgeReady = dodgeReady;
     }
 
-    let moveUp = keys['KeyW'] || keys['ArrowUp'];
-    let moveDown = keys['KeyS'] || keys['ArrowDown'];
-    let turnLeft = keys['KeyA'] || keys['ArrowLeft'];
-    let turnRight = keys['KeyD'] || keys['ArrowRight'];
+    let moveUp = keys['KeyW'] || keys['ArrowUp'], moveDown = keys['KeyS'] || keys['ArrowDown'];
+    let turnLeft = keys['KeyA'] || keys['ArrowLeft'], turnRight = keys['KeyD'] || keys['ArrowRight'];
 
     let rotSpeed = 0.065;
     if (turnLeft) player.dir -= rotSpeed;
     if (turnRight) player.dir += rotSpeed;
-    if (joyActive) player.dir += joyTurn * 0.055; // Reduced from 0.085
+    if (joyActive) player.dir += joyTurn * 0.055;
     if (gpTurnX !== 0) player.dir += gpTurnX * 0.085;
 
     isMoving = false;
@@ -1342,42 +1256,35 @@ function update(dt = 1) {
         isMoving = true;
     } else {
         isDodging = false;
-        
         let isSprinting = keys['ShiftLeft'] || gpSprint;
         let joyDist = joyActive ? Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS : 0;
-        if (joyDist > 0.68) isSprinting = true;
-        if (Math.abs(gpMoveY) > 0.68 || Math.abs(gpMoveX) > 0.68) isSprinting = true; 
-        
+        if (joyDist > 0.68 || Math.abs(gpMoveY) > 0.68 || Math.abs(gpMoveX) > 0.68) isSprinting = true;
         let moveSpeed = (isSprinting ? 0.095 : 0.045) * dt;
-        
-        let dx = Math.cos(player.dir) * moveSpeed; 
+        let dx = Math.cos(player.dir) * moveSpeed;
         let dy = Math.sin(player.dir) * moveSpeed;
-        if (moveUp) { 
-            if (canMove(player.x + dx, player.y)) { player.x += dx; isMoving = true; } 
-            if (canMove(player.x, player.y + dy)) { player.y += dy; isMoving = true; } 
+        if (moveUp) {
+            if (canMove(player.x + dx, player.y)) { player.x += dx; isMoving = true; }
+            if (canMove(player.x, player.y + dy)) { player.y += dy; isMoving = true; }
         }
-        if (moveDown) { 
-            if (canMove(player.x - dx, player.y)) { player.x -= dx; isMoving = true; } 
-            if (canMove(player.x, player.y - dy)) { player.y -= dy; isMoving = true; } 
+        if (moveDown) {
+            if (canMove(player.x - dx, player.y)) { player.x -= dx; isMoving = true; }
+            if (canMove(player.x, player.y - dy)) { player.y -= dy; isMoving = true; }
         }
-
         if (joyActive) {
             let fwd = joyForward * moveSpeed * 1.05;
-            if (fwd > 0.01 || fwd < -0.01) {
-                let fwdDx = Math.cos(player.dir) * fwd; let fwdDy = Math.sin(player.dir) * fwd;
+            if (Math.abs(fwd) > 0.01) {
+                let fwdDx = Math.cos(player.dir) * fwd, fwdDy = Math.sin(player.dir) * fwd;
                 if (canMove(player.x + fwdDx, player.y)) player.x += fwdDx;
                 if (canMove(player.x, player.y + fwdDy)) player.y += fwdDy;
                 isMoving = true;
             }
         }
-
         if (gpMoveY !== 0) {
             let fwdDx = Math.cos(player.dir) * (gpMoveY * -moveSpeed);
             let fwdDy = Math.sin(player.dir) * (gpMoveY * -moveSpeed);
             if (canMove(player.x + fwdDx, player.y)) { player.x += fwdDx; isMoving = true; }
             if (canMove(player.x, player.y + fwdDy)) { player.y += fwdDy; isMoving = true; }
         }
-
         if (gpMoveX !== 0) {
             let strafeDx = Math.cos(player.dir + Math.PI/2) * (gpMoveX * moveSpeed);
             let strafeDy = Math.sin(player.dir + Math.PI/2) * (gpMoveX * moveSpeed);
@@ -1386,13 +1293,11 @@ function update(dt = 1) {
         }
     }
 
-    if (isMoving) bob += (keys['ShiftLeft'] || gpSprint || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 * dt : 0.16 * dt; 
+    if (isMoving) bob += (keys['ShiftLeft'] || gpSprint || (joyActive && Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS > 0.68)) ? 0.28 * dt : 0.16 * dt;
     else bob = Math.max(0, bob - 0.12 * dt);
-    
+
     if (isDodging !== lastIsDodging) {
-        domVignette.style.background = isDodging 
-            ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" 
-            : "radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%)";
+        domVignette.style.background = isDodging ? "radial-gradient(circle, transparent 35%, rgba(255, 255, 255, 0.6) 100%)" : "radial-gradient(circle, transparent 35%, rgba(255, 20, 147, 0.45) 100%)";
         lastIsDodging = isDodging;
     }
     const newOpacity = isDodging ? 1 : (player.hp <= 5 ? (0.45 + Math.sin(Date.now() * 0.06) * 0.45) : 0);
@@ -1407,129 +1312,100 @@ function update(dt = 1) {
     if (player.combo > highestCombo) highestCombo = player.combo;
 
     const currentHP = Math.max(0, Math.floor(player.hp));
-    if (currentHP !== lastHP) {
-        domHpDisplay.textContent = `❤️ x${currentHP}`;
-        lastHP = currentHP;
-    }
+    if (currentHP !== lastHP) { domHpDisplay.textContent = `❤️ x${currentHP}`; lastHP = currentHP; }
 
     const bonusText = untouchedSecs > 5 ? ` 🛡️+${Math.floor(untouchedSecs)}` : "";
     const scoreText = `✨ ${Math.floor(player.score)}${bonusText}`;
-    if (scoreText !== lastScoreText) {
-        domScoreDisplay.textContent = scoreText;
-        lastScoreText = scoreText;
-    }
+    if (scoreText !== lastScoreText) { domScoreDisplay.textContent = scoreText; lastScoreText = scoreText; }
 
     const currentHi = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
-    if (currentHi !== lastHi) {
-        domHiDisplay.textContent = `🏆 ${currentHi}`;
-        lastHi = currentHi;
-    }
+    if (currentHi !== lastHi) { domHiDisplay.textContent = `🏆 ${currentHi}`; lastHi = currentHi; }
 
     const multText = `x${player.mult}`;
-    if (multText !== lastMultText) {
-        domMultDisplay.textContent = multText;
-        lastMultText = multText;
-    }
+    if (multText !== lastMultText) { domMultDisplay.textContent = multText; lastMultText = multText; }
 
-    if (Math.abs(player.combo - lastCombo) > 0.4) {
-        domComboFill.style.width = player.combo + "%";
-        lastCombo = player.combo;
-    }
+    if (Math.abs(player.combo - lastCombo) > 0.4) { domComboFill.style.width = player.combo + "%"; lastCombo = player.combo; }
 
     const hpPct = (player.hp / 15) * 100;
     let faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png';
-    if (hpPct <= 50) {
-        faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/50percenthealth.png';
-    } else {
-        if (turnRight || joyTurn > 0.1 || gpTurnX > 0.1) {
-            faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookright.png';
-        } else if (turnLeft || joyTurn < -0.1 || gpTurnX < -0.1) {
-            faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookleft.png';
-        }
-    }
-    if (faceUrl !== lastFaceUrl) {
-        domPlayerFace.src = faceUrl;
-        lastFaceUrl = faceUrl;
-    }
+    if (hpPct <= 50) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/50percenthealth.png';
+    else if (turnRight || joyTurn > 0.1 || gpTurnX > 0.1) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookright.png';
+    else if (turnLeft || joyTurn < -0.1 || gpTurnX < -0.1) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookleft.png';
+    if (faceUrl !== lastFaceUrl) { domPlayerFace.src = faceUrl; lastFaceUrl = faceUrl; }
 
     const activeBoss = sprites.find(s => s.type === 'boss' && s.alive);
     if (activeBoss) {
         domBossHud.style.display = 'flex';
-        const bossHpPct = (activeBoss.hp / activeBoss.maxHp) * 100;
-        domBossBarFill.style.width = bossHpPct + "%";
-    } else {
-        domBossHud.style.display = 'none';
-    }
+        domBossBarFill.style.width = (activeBoss.hp / activeBoss.maxHp * 100) + "%";
+    } else domBossHud.style.display = 'none';
 
     sprites.forEach(s => {
         if (!s.alive) return;
         if (s.atkTimer > 0) s.atkTimer -= 16 * dt;
-        let d = Math.sqrt((s.x-player.x)**2 + (s.y-player.y)**2);
-        
-        if (s.pickup && d < 0.6) { 
-            s.alive = false; 
-            playSound('sine', 1180, 55, 0.27); 
-            
-            if (s.e === "🧁") {
-                player.hp = Math.min(45, player.hp + 5); 
-            } else if (s.e === "📦") {
-                toyAmmo["🍼"] += 20;
-                toyAmmo["🛏️"] += 5;
-                toyAmmo["🎵"] += 1;
-                hitFlash = 0.5;
-                playSound('sine', 1400, 100, 0.2);
+        let d = Math.hypot(s.x - player.x, s.y - player.y);
+
+        if (s.pickup && d < 0.6) {
+            s.alive = false;
+            playSound('sine', 1180, 55, 0.27);
+            if (s.e === "🧁") player.hp = Math.min(45, player.hp + 5);
+            else if (s.e === "📦") {
+                toyAmmo["🍼"] += 20; toyAmmo["🛏️"] += 5; toyAmmo["🎵"] += 1;
+                hitFlash = 0.5; playSound('sine', 1400, 100, 0.2);
             } else if (TOYS[s.e]) {
-                unlockedToys[s.e] = true;
-                currentToy = s.e;
+                unlockedToys[s.e] = true; currentToy = s.e;
                 let ammoAmount = s.e === "🍼" ? 40 : (s.e === "🛏️" ? 10 : 3);
                 toyAmmo[s.e] += ammoAmount;
-                hitFlash = 0.5; 
-                playSound('sine', 800, 50, 0.1);
+                hitFlash = 0.5; playSound('sine', 800, 50, 0.1);
+            } else if (s.plushieId !== undefined) {
+                let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
+                if (!collection.includes(s.plushieId)) {
+                    collection.push(s.plushieId);
+                    localStorage.setItem('plushieCollection', JSON.stringify(collection));
+                    spawnParticles(s.x, s.y, "🌟", 28);
+                    playSound('sine', 880, 60, 0.35);
+                    playSound('sine', 1200, 80, 0.4);
+                    playSound('sine', 1600, 140, 0.3);
+                    hitFlash = 0.6;
+                }
             }
-            checkWin(); 
+            checkWin();
         }
-        
+
         if (s.type === 'boss') {
             if (!s.isPhase2 && s.hp <= s.maxHp / 2) {
-                s.isPhase2 = true;
-                s.phase2StartTime = Date.now();
-                playSound('sine', 150, 1000, 0.4, 600); 
+                s.isPhase2 = true; s.phase2StartTime = Date.now();
+                playSound('sine', 150, 1000, 0.4, 600);
             }
-
             if (s.isPhase2) {
                 let chargeTime = Date.now() - s.phase2StartTime;
                 if (Math.random() < 0.3) spawnParticles(s.x + (Math.random()-0.5), s.y + (Math.random()-0.5), "⚡", 1);
-
                 if (chargeTime >= 5000) {
-                    s.phase2StartTime = Date.now(); 
+                    s.phase2StartTime = Date.now();
                     if (isDodging) {
                         playSound('sine', 1200, 200, 0.3, -400);
                         spawnParticles(player.x, player.y, "✨", 25);
                         player.score += 500 * player.mult;
                         hitFlash = 0.8;
                     } else {
-                        player.hp = 0; shake = 2.0;
-                        lastDamageTime = Date.now();
+                        player.hp = 0; shake = 2.0; lastDamageTime = Date.now();
                         playSound('triangle', 100, 600, 0.5, -100);
                         showEnd("MEGA BOOPED! 🧸⚡");
                     }
                 }
             } else {
-                s.strafeTimer += dt; 
+                s.strafeTimer += dt;
                 if (s.strafeTimer > 60) { s.strafeDir *= -1; s.strafeTimer = 0; }
                 let sy = s.y + (s.strafeDir * 0.038); if (canMove(s.x, sy)) s.y = sy;
                 if (d < 12 && Date.now() - s.lastShot > 1900) {
-                    let a = Math.atan2(player.y-s.y, player.x-s.x);
-                    
+                    let a = Math.atan2(player.y - s.y, player.x - s.x);
                     projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.095, vy:Math.sin(a)*0.095, l:150, e:"💗", scale:0.65, isProj: true});
                     s.lastShot = Date.now(); s.atkTimer = 480;
                 }
             }
         } else if (!s.pickup) {
-            if (d < 12 && d > 0.5) { 
+            if (d < 12 && d > 0.5) {
                 let enemySpeed = 0.012 * (difficultyMult === 1.0 ? 0.8 : (difficultyMult === 1.5 ? 1.0 : 1.3)) * dt;
-                let dirX = (player.x - s.x) / d; let dirY = (player.y - s.y) / d;
-                
+                let dirX = (player.x - s.x) / d, dirY = (player.y - s.y) / d;
                 let sepX = 0, sepY = 0;
                 sprites.forEach(other => {
                     if (other !== s && other.alive && !other.pickup) {
@@ -1537,40 +1413,31 @@ function update(dt = 1) {
                         if (od < 0.6 && od > 0.01) { sepX += (s.x - other.x) * 0.03; sepY += (s.y - other.y) * 0.03; }
                     }
                 });
-
-                let finalX = (dirX * enemySpeed) + sepX; let finalY = (dirY * enemySpeed) + sepY;
+                let finalX = dirX * enemySpeed + sepX, finalY = dirY * enemySpeed + sepY;
                 const canEnemyMove = (ex, ey) => { let nx = Math.floor(ex), ny = Math.floor(ey); return map[ny] && map[ny][nx] === 0; };
-
                 if (canEnemyMove(s.x + finalX, s.y)) s.x += finalX;
                 if (canEnemyMove(s.x, s.y + finalY)) s.y += finalY;
             }
-
             if (d < 8 && Date.now() - s.lastShot > 3900) {
-                let a = Math.atan2(player.y-s.y, player.x-s.x);
+                let a = Math.atan2(player.y - s.y, player.x - s.x);
                 projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150, e:"💗", scale:0.65, isProj: true});
                 s.lastShot = Date.now(); s.atkTimer = 480;
             }
         }
     });
 
-    // Projectiles (delta-time + sub-step collision)
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         let removed = false;
         const steps = 4;
-        const stepVx = p.vx * dt / steps;
-        const stepVy = p.vy * dt / steps;
+        const stepVx = p.vx * dt / steps, stepVy = p.vy * dt / steps;
         for (let k = 0; k < steps && !removed; k++) {
             p.x += stepVx; p.y += stepVy;
             if (Math.hypot(p.x - player.x, p.y - player.y) < 0.45) {
-                if (isDodging) {
-                    spawnParticles(p.x, p.y, "💨", 3);
-                    removed = true;
-                } else {
+                if (isDodging) { spawnParticles(p.x, p.y, "💨", 3); removed = true; }
+                else {
                     const damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
-                    player.hp -= damage;
-                    player.combo = 0; shake = 1.1;
-                    lastDamageTime = Date.now();
+                    player.hp -= damage; player.combo = 0; shake = 1.1; lastDamageTime = Date.now();
                     playSound('triangle', 410, 135, 0.23, -110);
                     if (player.hp <= 0) showEnd("BOOPED! 🧸");
                     removed = true;
@@ -1582,28 +1449,30 @@ function update(dt = 1) {
         if (removed || p.l <= 0) projectiles.splice(i, 1);
     }
 
-    // UPDATE POOLED PARTICLES (delta-time)
     for (let i = 0; i < MAX_PARTICLES; i++) {
         let p = particlePool[i];
         if (p.active) {
-            p.x += p.vx * dt; 
-            p.y += p.vy * dt; 
-            p.l -= 0.035 * dt; 
-            if (p.l <= 0) p.active = false; 
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.l -= 0.035 * dt;
+            if (p.l <= 0) p.active = false;
         }
     }
 }
 
 function updatePortalTexture() {
     if (!assets.portal.complete || assets.portal.naturalWidth === 0) return;
-    
-    let t = Date.now() * 0.002; let c = 128; pCtx.fillStyle = "#0a0515"; pCtx.fillRect(0, 0, 256, 256);
+    let t = Date.now() * 0.002, c = 128;
+    pCtx.fillStyle = "#0a0515"; pCtx.fillRect(0, 0, 256, 256);
     let pulse = 1 + Math.sin(t * 2) * 0.08;
     let rg = pCtx.createRadialGradient(c, c, 0, c, c, 128 * pulse);
-    rg.addColorStop(0, "rgba(255, 255, 255, 0.9)"); rg.addColorStop(0.4, "rgba(79, 195, 247, 0.8)");
-    rg.addColorStop(0.7, "rgba(255, 20, 147, 0.5)"); rg.addColorStop(1, "rgba(0, 0, 0, 0)");
+    rg.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+    rg.addColorStop(0.4, "rgba(79, 195, 247, 0.8)");
+    rg.addColorStop(0.7, "rgba(255, 20, 147, 0.5)");
+    rg.addColorStop(1, "rgba(0, 0, 0, 0)");
     pCtx.fillStyle = rg; pCtx.fillRect(0, 0, 256, 256);
-    let imgSize = 230 * pulse; pCtx.drawImage(assets.portal, c - imgSize/2, c - imgSize/2, imgSize, imgSize);
+    let imgSize = 230 * pulse;
+    pCtx.drawImage(assets.portal, c - imgSize/2, c - imgSize/2, imgSize, imgSize);
 }
 
 function draw() {
@@ -1619,51 +1488,41 @@ function draw() {
     }
     if (cachedSkyLevel !== levelIdx) {
         cachedSkyGrad = ctx.createLinearGradient(0, -100, 0, 160);
-        cachedSkyGrad.addColorStop(0, levelIdx === 4 ? '#0a0825' : '#87CEEB'); cachedSkyGrad.addColorStop(1, '#221122');
+        cachedSkyGrad.addColorStop(0, levelIdx === 4 ? '#0a0825' : '#87CEEB');
+        cachedSkyGrad.addColorStop(1, '#221122');
         cachedSkyLevel = levelIdx;
     }
 
     ctx.fillStyle = cachedSkyGrad; ctx.fillRect(0, -100, 400, 260);
     ctx.fillStyle = cachedFloorGrad; ctx.fillRect(0, 150, 400, 200);
 
-    const map = MAPS[levelIdx].m; const tex = MAPS[levelIdx].tex;
-
+    const map = MAPS[levelIdx].m, tex = MAPS[levelIdx].tex;
     const FOV = 0.66;
-    const cosDir = Math.cos(player.dir);
-    const sinDir = Math.sin(player.dir);
-    const cosDir90 = Math.cos(player.dir + Math.PI/2);
-    const sinDir90 = Math.sin(player.dir + Math.PI/2);
+    const cosDir = Math.cos(player.dir), sinDir = Math.sin(player.dir);
+    const cosDir90 = Math.cos(player.dir + Math.PI/2), sinDir90 = Math.sin(player.dir + Math.PI/2);
 
     for (let i = 0; i < 400; i++) {
         let cameraX = 2 * i / 400 - 1;
         let rayDirX = cosDir + cosDir90 * cameraX * FOV;
         let rayDirY = sinDir + sinDir90 * cameraX * FOV;
-
         let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
         let deltaDistX = Math.abs(1 / rayDirX), deltaDistY = Math.abs(1 / rayDirY);
-        let stepX, stepY, sideDistX, sideDistY, hit = 0, side = 0;
-
-        if (rayDirX < 0) { stepX = -1; sideDistX = (player.x - mapX) * deltaDistX; } 
-        else { stepX = 1; sideDistX = (mapX + 1.0 - player.x) * deltaDistX; }
-        if (rayDirY < 0) { stepY = -1; sideDistY = (player.y - mapY) * deltaDistY; } 
-        else { stepY = 1; sideDistY = (mapY + 1.0 - player.y) * deltaDistY; }
-
-        let steps = 0;
+        let stepX = rayDirX < 0 ? -1 : 1, stepY = rayDirY < 0 ? -1 : 1;
+        let sideDistX = rayDirX < 0 ? (player.x - mapX) * deltaDistX : (mapX + 1 - player.x) * deltaDistX;
+        let sideDistY = rayDirY < 0 ? (player.y - mapY) * deltaDistY : (mapY + 1 - player.y) * deltaDistY;
+        let hit = 0, side = 0, steps = 0;
         while (hit === 0 && steps < 100) {
             steps++;
-            if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; } 
+            if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
             else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
             if (map[mapY] && map[mapY][mapX] > 0) hit = map[mapY][mapX];
         }
-
-        let perpWallDist = (side === 0) ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY);
+        let perpWallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY;
         zBuf[i] = perpWallDist;
         let h = 300 / perpWallDist;
-        let wallX = (side === 0) ? player.y + perpWallDist * rayDirY : player.x + perpWallDist * rayDirX;
+        let wallX = side === 0 ? player.y + perpWallDist * rayDirY : player.x + perpWallDist * rayDirX;
         wallX -= Math.floor(wallX);
-
-        const wallTex = (hit === 9) ? pCanvas : tex;
-        
+        const wallTex = hit === 9 ? pCanvas : tex;
         if (wallTex.width > 0) {
             let texX = Math.floor(wallX * wallTex.width);
             ctx.globalAlpha = Math.max(0.18, 1 - (perpWallDist / 12));
@@ -1676,87 +1535,98 @@ function draw() {
     displayList.length = 0;
     for (let s of sprites) if (s.alive) displayList.push(s);
     for (let p of projectiles) displayList.push(p);
-    
-    // ADD ACTIVE POOLED PARTICLES TO RENDER LIST
-    for (let i = 0; i < MAX_PARTICLES; i++) {
-        if (particlePool[i].active) displayList.push(particlePool[i]);
-    }
+    for (let i = 0; i < MAX_PARTICLES; i++) if (particlePool[i].active) displayList.push(particlePool[i]);
 
     displayList.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2));
+
+    const now = Date.now();
+    const pickupPulse = 1 + Math.sin(now * 0.008) * 0.15;
+    const glowIntensity = 22 + Math.sin(now * 0.012) * 8;
 
     displayList.forEach(s => {
         let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
         let ang = Math.atan2(dy, dx) - player.dir;
-        while (ang < -Math.PI) ang += Math.PI*2; while (ang > Math.PI) ang -= Math.PI*2;
-        
-        if (Math.abs(ang) < 2.0) {
-            let sx = (ang / 1.2 + 0.5) * 400;
-            let zIndex = Math.max(0, Math.min(399, Math.floor(sx)));
-            
-            if (zBuf[zIndex] > dist) {
-                let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.pickup ? 1.4 : (s.type === 'boss' ? 2.6 : 1)));
-                
-                if (s.l !== undefined) {
-                    ctx.globalAlpha = s.l > 0.2 ? 1 : s.l * 5;
+        while (ang < -Math.PI) ang += Math.PI*2;
+        while (ang > Math.PI) ang -= Math.PI*2;
+        if (Math.abs(ang) >= 2.0) return;
+
+        let sx = (ang / 1.2 + 0.5) * 400;
+        let zIndex = Math.max(0, Math.min(399, Math.floor(sx)));
+        if (zBuf[zIndex] <= dist) return;
+
+        let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.pickup ? 1.4 : (s.type === 'boss' ? 2.6 : 1)));
+
+        if (s.l !== undefined) ctx.globalAlpha = s.l > 0.2 ? 1 : s.l * 5;
+        else ctx.globalAlpha = 1;
+
+        if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        else if (s.e === "🐘") ctx.drawImage(s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        else if (s.e === "BOSS_FINAL") {
+            let bossImg = assets.bossIdle;
+            let sxOffset = 0;
+            if (s.isPhase2) { bossImg = assets.bossPhase2; sxOffset = (Math.random() - 0.5) * 8; }
+            else if (s.atkTimer > 0) bossImg = assets.bossAtk;
+            ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 150 - sz/2, sz, sz);
+        } else {
+            if (!s.isParticle && !s.isProj) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+                ctx.beginPath();
+                ctx.ellipse(sx, 150 + sz/2 - sz*0.05, sz*0.3, sz*0.08, 0, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            if (s.pickup) {
+                if (s.plushieId !== undefined) {
+                    ctx.shadowColor = '#ffff00';
+                    ctx.shadowBlur = 32 + Math.sin(now * 0.015) * 14;
+                    sz *= 1.18;
                 } else {
-                    ctx.globalAlpha = 1;
+                    ctx.shadowColor = '#ffff99';
+                    ctx.shadowBlur = glowIntensity;
                 }
-                
-                if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "🐘") ctx.drawImage(s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle, sx - sz/2, 150 - sz/2, sz, sz);
-                else if (s.e === "BOSS_FINAL") {
-                    let bossImg = assets.bossIdle;
-                    let sxOffset = 0;
-                    if (s.isPhase2) { bossImg = assets.bossPhase2; sxOffset = (Math.random() - 0.5) * 8; } 
-                    else if (s.atkTimer > 0) bossImg = assets.bossAtk;
-                    ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 150 - sz/2, sz, sz);
-                }
-                else { 
-                    if (!s.isParticle && !s.isProj) {
-                        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-                        ctx.beginPath();
-                        ctx.ellipse(sx, 150 + sz/2 - sz*0.05, sz*0.3, sz*0.08, 0, 0, Math.PI*2);
-                        ctx.fill();
-                    }
-                    ctx.font = `${sz}px serif`; 
-                    ctx.textAlign = "center"; 
-                    ctx.fillText(s.e || "✨", sx, 150 + sz/2); 
-                }
+                ctx.globalAlpha = 1.0;
+                sz *= pickupPulse;
+            }
+
+            ctx.font = `${sz}px serif`;
+            ctx.textAlign = "center";
+            ctx.fillText(s.e || "✨", sx, 150 + sz/2);
+
+            if (s.pickup) {
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
                 ctx.globalAlpha = 1;
             }
         }
+        ctx.globalAlpha = 1;
     });
 
-    if (hitFlash > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${hitFlash * 0.3})`; ctx.fillRect(0, 0, 400, 300); hitFlash -= 0.1; }
-
-    ctx.restore(); 
-    
-    ctx.save();
-    let wandSway = Math.cos(bob * 0.5) * 16; 
-    let wandAtkY = 0;
-    let wandAtkX = 0;
-    let wandRot = 0;
-
-    if (attackAnim > 0) {
-        let t = 1.0 - attackAnim; 
-        if (currentToy === "🪄") {
-            wandAtkY = Math.sin(t * Math.PI) * -48;
-        } else if (currentToy === "🍼") {
-            wandAtkY = Math.sin(t * Math.PI * 4) * -15; 
-        } else if (currentToy === "🛏️") {
-            wandAtkX = Math.sin(t * Math.PI) * 150 - 75; 
-            wandAtkY = Math.sin(t * Math.PI) * -40;
-            wandRot = Math.sin(t * Math.PI) * 1.5; 
-        } else if (currentToy === "🎵") {
-            wandAtkY = Math.sin(t * Math.PI) * -20;
-        }
+    if (hitFlash > 0) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${hitFlash * 0.3})`;
+        ctx.fillRect(0, 0, 400, 300);
+        hitFlash -= 0.1;
     }
 
+    ctx.restore();
+
+    ctx.save();
+    let wandSway = Math.cos(bob * 0.5) * 16;
+    let wandAtkY = 0, wandAtkX = 0, wandRot = 0;
+    if (attackAnim > 0) {
+        let t = 1.0 - attackAnim;
+        if (currentToy === "🪄") wandAtkY = Math.sin(t * Math.PI) * -48;
+        else if (currentToy === "🍼") wandAtkY = Math.sin(t * Math.PI * 4) * -15;
+        else if (currentToy === "🛏️") {
+            wandAtkX = Math.sin(t * Math.PI) * 150 - 75;
+            wandAtkY = Math.sin(t * Math.PI) * -40;
+            wandRot = Math.sin(t * Math.PI) * 1.5;
+        } else if (currentToy === "🎵") wandAtkY = Math.sin(t * Math.PI) * -20;
+    }
     ctx.translate(200 + wandSway + wandAtkX, 275 + currentBob + wandAtkY);
     ctx.rotate(wandRot);
-    ctx.font = "145px serif"; 
+    ctx.font = "145px serif";
     ctx.textAlign = "center";
     ctx.fillText(currentToy, 0, 0);
     ctx.restore();
@@ -1775,11 +1645,7 @@ function draw() {
 
 function drawMinimap() {
     mCtx.clearRect(0, 0, 80, 80);
-    
-    if (minimapStaticDirty) {
-        redrawMinimapStatic();
-        minimapStaticDirty = false;
-    }
+    if (minimapStaticDirty) { redrawMinimapStatic(); minimapStaticDirty = false; }
     mCtx.drawImage(miniBgCanvas, 0, 0);
 
     const map = MAPS[levelIdx].m;
@@ -1788,10 +1654,23 @@ function drawMinimap() {
 
     sprites.forEach(s => {
         if (s.alive) {
-            mCtx.fillStyle = s.pickup ? "#00ffff" : "#ff3366";
-            mCtx.beginPath();
-            mCtx.arc(s.x * cw, s.y * ch, 2.5, 0, Math.PI * 2);
-            mCtx.fill();
+            if (s.plushieId !== undefined) {
+                // PLUSHIES NOW SHOW AS GIFT EMOJI 🎁 ON MINIMAP
+                mCtx.save();
+                mCtx.font = "9px serif";
+                mCtx.textAlign = "center";
+                mCtx.textBaseline = "middle";
+                mCtx.fillStyle = "#ffff00";
+                mCtx.shadowColor = "#ffff00";
+                mCtx.shadowBlur = 5;
+                mCtx.fillText("🎁", s.x * cw, s.y * ch + 1);
+                mCtx.restore();
+            } else {
+                mCtx.fillStyle = s.pickup ? "#00ffff" : "#ff3366";
+                mCtx.beginPath();
+                mCtx.arc(s.x * cw, s.y * ch, 2.5, 0, Math.PI * 2);
+                mCtx.fill();
+            }
         }
     });
 
@@ -1801,26 +1680,18 @@ function drawMinimap() {
     mCtx.fill();
 }
 
-function loop() { 
+function loop() {
     const now = performance.now();
-    const dt = Math.min((now - lastTime) / 16.6667, 3); // normalized to ~60 fps, clamped
+    const dt = Math.min((now - lastTime) / 16.6667, 3);
     lastTime = now;
-
     currentGp = getGamepad();
-    
     if (currentGp) {
-        let currentPause = currentGp.buttons.length > 9 && currentGp.buttons[9]?.pressed; 
-        if (currentPause && !lastGamepadPause) {
-            if (gameActive && !isLoading) togglePause();
-        }
+        let currentPause = currentGp.buttons.length > 9 && currentGp.buttons[9]?.pressed;
+        if (currentPause && !lastGamepadPause) if (gameActive && !isLoading) togglePause();
         lastGamepadPause = currentPause;
     }
-
-    if (gameActive && !paused) { 
-        update(dt); 
-        draw(); 
-    } 
-    requestAnimationFrame(loop); 
+    if (gameActive && !paused) { update(dt); draw(); }
+    requestAnimationFrame(loop);
 }
 loop();
 
