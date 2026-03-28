@@ -1,0 +1,27 @@
+{
+  "background_color": "#ffffff",
+  "description": "Enter the forest and start your Plushie Quest in this optimized retro raycasting adventure!",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "sfwfps",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "sfwfps",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png",
+      "type": "image/png",
+      "sizes": "1008x1057",
+      "isSquare": false,
+      "isPng": true,
+      "isWebp": false,
+      "isJpg": false,
+      "width": 1008,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
+    }
+  ]
+}
