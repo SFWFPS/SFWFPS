@@ -663,7 +663,16 @@ canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80
 let displayList = [];                      
 let lastHP = -1, lastScoreText = '', lastHi = -1, lastMultText = '', lastCombo = -1;
 let lastFaceUrl = '', lastIsDodging = false, lastVignetteOpacity = -1, lastDodgeReady = true;
+
+// Skin Tracking Variables
 let rainbowWandEnabled = localStorage.getItem('rainbowWandEnabled') === 'true';
+let rainbowMilkUnlocked = localStorage.getItem('rainbowMilkUnlocked') === 'true';
+let rainbowBoxUnlocked = localStorage.getItem('rainbowBoxUnlocked') === 'true';
+let rainbowPillowUnlocked = localStorage.getItem('rainbowPillowUnlocked') === 'true';
+
+let rainbowMilkEnabled = localStorage.getItem('rainbowMilkEnabled') === 'true';
+let rainbowBoxEnabled = localStorage.getItem('rainbowBoxEnabled') === 'true';
+let rainbowPillowEnabled = localStorage.getItem('rainbowPillowEnabled') === 'true';
 
 let miniBgCanvas = document.createElement('canvas');
 miniBgCanvas.width = 80; miniBgCanvas.height = 80;
@@ -799,23 +808,56 @@ const TOY_DESCRIPTIONS = {
     "🎵": "Area-of-effect sleepy tunes. Hits all around you."
 };
 
+function createRainbowSlot(emoji, title, desc, isEnabled, toggleFuncName) {
+    const slot = document.createElement('div');
+    slot.className = `toy-slot unlocked`;
+    slot.style.borderColor = 'var(--sky)';
+    slot.style.boxShadow = 'inset 0 0 20px rgba(79, 195, 247, 0.4)';
+    
+    slot.innerHTML = `
+        <div class="rainbow-anim" style="font-size:48px; margin-bottom:10px;">
+            ${emoji}
+        </div>
+        <div style="font-size:16px; font-weight:bold; color:white; text-shadow: 0 0 10px var(--sky);">
+            ${title}
+        </div>
+        <div style="font-size:12px; color:var(--sky); margin-top:4px; margin-bottom:12px;">
+            ${desc}
+        </div>
+        <button onclick="${toggleFuncName}(event)" style="padding: 6px 12px; background: ${isEnabled ? 'var(--hot-pink)' : 'transparent'}; border: 2px solid ${isEnabled ? '#fff' : '#888'}; border-radius: 12px; color: ${isEnabled ? 'white' : '#888'}; font-weight: bold; cursor: pointer; font-size: 12px; transition: all 0.2s;">
+            ${isEnabled ? 'SKIN: ON' : 'SKIN: OFF'}
+        </button>
+    `;
+    return slot;
+}
+
 function showToyboxMenu() {
     const grid = document.getElementById('toybox-grid');
     grid.innerHTML = '';
     
     for (const [emoji, data] of Object.entries(TOYS)) {
         const isUnlocked = unlockedToys[emoji]; 
+        
         const isRainbowWand = (emoji === "🪄" && rainbowWandEnabled && isUnlocked);
+        const isRainbowMilk = (emoji === "🍼" && rainbowMilkEnabled && isUnlocked);
+        const isRainbowPillow = (emoji === "🛏️" && rainbowPillowEnabled && isUnlocked);
+        const isRainbowBox = (emoji === "🎵" && rainbowBoxEnabled && isUnlocked);
+        const isRainbowSkinActive = isRainbowWand || isRainbowMilk || isRainbowPillow || isRainbowBox;
+        
+        const filterStyle = isRainbowSkinActive ? '' : `filter:${isUnlocked ? 'drop-shadow(0 0 12px var(--hot-pink))' : 'grayscale(1) brightness(0.4)'};`;
+        
+        let displayName = data.name;
+        let displayDesc = TOY_DESCRIPTIONS[emoji];
+        if (isRainbowWand) { displayName = 'Rainbow Wand'; displayDesc = 'Legendary rainbow power!'; }
+        else if (isRainbowMilk) { displayName = 'Rainbow Milk'; displayDesc = 'Legendary rainbow power!'; }
+        else if (isRainbowPillow) { displayName = 'Rainbow Pillow'; displayDesc = 'Legendary rainbow power!'; }
+        else if (isRainbowBox) { displayName = 'Rainbow Lullaby'; displayDesc = 'Legendary rainbow power!'; }
         
         const slot = document.createElement('div');
         slot.className = `toy-slot ${isUnlocked ? 'unlocked' : ''}`;
         
-        const filterStyle = isRainbowWand ? '' : `filter:${isUnlocked ? 'drop-shadow(0 0 12px var(--hot-pink))' : 'grayscale(1) brightness(0.4)'};`;
-        const displayName = isRainbowWand ? 'Rainbow Wand' : data.name;
-        const displayDesc = isRainbowWand ? 'Legendary rainbow power!' : TOY_DESCRIPTIONS[emoji];
-        
         slot.innerHTML = `
-            <div class="${isRainbowWand ? 'rainbow-anim' : ''}" style="font-size:48px; margin-bottom:10px; ${filterStyle}">
+            <div class="${isRainbowSkinActive ? 'rainbow-anim' : ''}" style="font-size:48px; margin-bottom:10px; ${filterStyle}">
                 ${emoji}
             </div>
             <div style="font-size:16px; font-weight:bold; color:white;">
@@ -834,38 +876,46 @@ function showToyboxMenu() {
         grid.appendChild(slot);
     }
 
-    // CHECK FOR 100% COMPLETION RAINBOW WAND
+    // APPEND RAINBOW SKIN TOGGLE SLOTS
     let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
     if (collection.length >= 12) {
-        const slot = document.createElement('div');
-        slot.className = `toy-slot unlocked`;
-        slot.style.borderColor = 'var(--sky)';
-        slot.style.boxShadow = 'inset 0 0 20px rgba(79, 195, 247, 0.4)';
-        
-        slot.innerHTML = `
-            <div class="rainbow-anim" style="font-size:48px; margin-bottom:10px;">
-                🪄
-            </div>
-            <div style="font-size:16px; font-weight:bold; color:white; text-shadow: 0 0 10px var(--sky);">
-                Rainbow Wand
-            </div>
-            <div style="font-size:12px; color:var(--sky); margin-top:4px; margin-bottom:12px;">
-                Legendary skin unlocked!
-            </div>
-            <button onclick="toggleRainbowWand(event)" style="padding: 6px 12px; background: ${rainbowWandEnabled ? 'var(--hot-pink)' : 'transparent'}; border: 2px solid ${rainbowWandEnabled ? '#fff' : '#888'}; border-radius: 12px; color: ${rainbowWandEnabled ? 'white' : '#888'}; font-weight: bold; cursor: pointer; font-size: 12px; transition: all 0.2s;">
-                ${rainbowWandEnabled ? 'SKIN: ON' : 'SKIN: OFF'}
-            </button>
-        `;
-        grid.appendChild(slot);
+        grid.appendChild(createRainbowSlot("🪄", "Rainbow Wand", "Legendary skin unlocked!", rainbowWandEnabled, "toggleRainbowWand"));
+    }
+    if (rainbowMilkUnlocked) {
+        grid.appendChild(createRainbowSlot("🍼", "Rainbow Milk", "Unlocked: I'm Not Even Tired", rainbowMilkEnabled, "toggleRainbowMilk"));
+    }
+    if (rainbowBoxUnlocked) {
+        grid.appendChild(createRainbowSlot("🎵", "Rainbow Lullaby", "Unlocked: A Little Eepy", rainbowBoxEnabled, "toggleRainbowBox"));
+    }
+    if (rainbowPillowUnlocked) {
+        grid.appendChild(createRainbowSlot("🛏️", "Rainbow Pillow", "Unlocked: Naptime", rainbowPillowEnabled, "toggleRainbowPillow"));
     }
     
     document.getElementById('toybox-menu').style.display = 'flex';
 }
 
 function toggleRainbowWand(e) {
-    e.stopPropagation(); // prevent clicking the slot itself
+    e.stopPropagation();
     rainbowWandEnabled = !rainbowWandEnabled;
     localStorage.setItem('rainbowWandEnabled', rainbowWandEnabled);
+    showToyboxMenu(); 
+}
+function toggleRainbowMilk(e) {
+    e.stopPropagation();
+    rainbowMilkEnabled = !rainbowMilkEnabled;
+    localStorage.setItem('rainbowMilkEnabled', rainbowMilkEnabled);
+    showToyboxMenu(); 
+}
+function toggleRainbowBox(e) {
+    e.stopPropagation();
+    rainbowBoxEnabled = !rainbowBoxEnabled;
+    localStorage.setItem('rainbowBoxEnabled', rainbowBoxEnabled);
+    showToyboxMenu(); 
+}
+function toggleRainbowPillow(e) {
+    e.stopPropagation();
+    rainbowPillowEnabled = !rainbowPillowEnabled;
+    localStorage.setItem('rainbowPillowEnabled', rainbowPillowEnabled);
     showToyboxMenu(); 
 }
 
@@ -905,17 +955,17 @@ const MAPS = [
         {x:2.5,y:1.5,e:"🍼",pickup:true},{x:3.5,y:1.5,e:"🛏️",pickup:true},
         {x:4.5,y:1.5,e:"🎵",pickup:true},{x:5.5,y:1.5,e:"📦",pickup:true},
         {x:2.8,y:5.2,e:"🧸",plushieId:0,pickup:true},
-        {x:5.5,y:5.2,e:"🐻",plushieId:1,pickup:true},   // Berry Bear - fixed open tile
+        {x:5.5,y:5.2,e:"🐻",plushieId:1,pickup:true},
         {x:4.1,y:2.2,e:"🐼",plushieId:2,pickup:true}
     ] },
     { n: "The Velvet Vaults", tex: assets.wall2, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,0,1,0,1,1,0,1],[1,0,1,0,0,0,0,1],[1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,5.5], enemies: [
         {x:3.5,y:3.3,e:"PRED"},{x:1.5,y:1.5,e:"SMALL"},
-        {x:6.5,y:5.5,e:"🦒",plushieId:4,pickup:true},   // Giraffic - fixed open tile
+        {x:6.5,y:5.5,e:"🦒",plushieId:4,pickup:true},
         {x:4.5,y:4.5,e:"🐨",plushieId:3,pickup:true}
     ] },
     { n: "The Velvet Gauntlet", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [
         {x:3.5,y:1.5,e:"PRED"},{x:5.5,y:3.5,e:"PRED"},{x:7.5,y:1.5,e:"PRED"},
-        {x:4.5,y:3.5,e:"🐘",plushieId:5,pickup:true},   // Ellie - fixed open tile
+        {x:4.5,y:3.5,e:"🐘",plushieId:5,pickup:true},
         {x:5.8,y:3.2,e:"🐰",plushieId:6,pickup:true},
         {x:4.8,y:4.2,e:"🦄",plushieId:7,pickup:true}
     ] },
@@ -1074,8 +1124,7 @@ function loadLevel(idx) {
         }
     });
 
-    // CONDITIONAL PLUSHIE SPAWNS
-    if (idx === 4) {  // boss floor only
+    if (idx === 4) {
         if (difficultyMult === 1.5) {
             sprites.push({x: 3.5, y: 3.5, e: "🐨", plushieId: 3, pickup: true, alive: true, distSq: 0});
         }
@@ -1210,15 +1259,29 @@ function doBoop() {
     playSound('sine', freq, 55, 0.28);
     if (currentToy === "🎵") playSound('triangle', 600, 300, 0.3);
 
+    let pEmojisRainbow = ["❤️", "🧡", "💛", "💚", "💙", "💜"];
+
     if (currentToy === "🎵") {
-        for(let i=0; i<24; i++) { let ang = (i / 24) * Math.PI * 2; emitParticle(player.x, player.y, Math.cos(ang)*0.25, Math.sin(ang)*0.25, 1.0, "🎶", 0.6); }
+        let notes = (rainbowBoxEnabled) ? pEmojisRainbow : ["🎶"];
+        for(let i=0; i<24; i++) { 
+            let ang = (i / 24) * Math.PI * 2; 
+            let emj = notes[Math.floor(Math.random() * notes.length)];
+            emitParticle(player.x, player.y, Math.cos(ang)*0.25, Math.sin(ang)*0.25, 1.0, emj, 0.6); 
+        }
     } else if (currentToy === "🛏️") {
-        for(let i=0; i<15; i++) { let ang = (player.dir - 0.6) + Math.random() * 1.2; emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.2, Math.sin(ang)*0.2, 0.8, "🪶", 0.4); }
+        let feathers = (rainbowPillowEnabled) ? pEmojisRainbow : ["🪶"];
+        for(let i=0; i<15; i++) { 
+            let ang = (player.dir - 0.6) + Math.random() * 1.2; 
+            let emj = feathers[Math.floor(Math.random() * feathers.length)];
+            emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.2, Math.sin(ang)*0.2, 0.8, emj, 0.4); 
+        }
     } else if (currentToy === "🍼") { 
-        let ang = player.dir + (Math.random()-0.5)*0.1; emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.3, Math.sin(ang)*0.3, 1.0, "💧", 0.3); 
+        let drops = (rainbowMilkEnabled) ? pEmojisRainbow : ["💧"];
+        let ang = player.dir + (Math.random()-0.5)*0.1; 
+        let emj = drops[Math.floor(Math.random() * drops.length)];
+        emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.3, Math.sin(ang)*0.3, 1.0, emj, 0.3); 
     } else {
-        // Magic Wand Particles 
-        let pEmojis = (rainbowWandEnabled && currentToy === "🪄") ? ["❤️", "🧡", "💛", "💚", "💙", "💜"] : ["🌸"];
+        let pEmojis = (rainbowWandEnabled && currentToy === "🪄") ? pEmojisRainbow : ["🌸"];
         for(let i=0; i<8; i++) { 
             let ang = (player.dir - 0.2) + Math.random() * 0.4; 
             let emj = pEmojis[Math.floor(Math.random() * pEmojis.length)];
@@ -1322,7 +1385,22 @@ function showEnd(msg) {
     overlay.style.display = 'flex';
     document.getElementById('status-msg').textContent = msg;
     let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
+    
     if (isWin) {
+        // Unlock Rainbow Skins dynamically
+        if (difficultyMult === 1.0 && !rainbowMilkUnlocked) {
+            localStorage.setItem('rainbowMilkUnlocked', 'true');
+            rainbowMilkUnlocked = true;
+        }
+        if (difficultyMult === 1.5 && !rainbowBoxUnlocked) {
+            localStorage.setItem('rainbowBoxUnlocked', 'true');
+            rainbowBoxUnlocked = true;
+        }
+        if (difficultyMult === 2.0 && !rainbowPillowUnlocked) {
+            localStorage.setItem('rainbowPillowUnlocked', 'true');
+            rainbowPillowUnlocked = true;
+        }
+
         const finalCombo = Math.floor(highestCombo);
         let favWeapon = "🪄", maxUses = -1;
         for (let w in weaponUsage) if (weaponUsage[w] > maxUses) { maxUses = weaponUsage[w]; favWeapon = w; }
@@ -1690,7 +1768,6 @@ function draw() {
 
     displayList.length = 0;
     
-    // PRE-CALCULATE DISTANCES ONCE BEFORE SORTING (Massive CPU Saver)
     let px = player.x, py = player.y;
     for (let s of sprites) {
         if (s.alive) { s.distSq = (s.x - px)**2 + (s.y - py)**2; displayList.push(s); }
@@ -1723,8 +1800,6 @@ function draw() {
         if (zBuf[zIndex] <= dist) return;
 
         let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.pickup ? 1.4 : (s.type === 'boss' ? 2.6 : 1)));
-        
-        // ROUND TEXT SIZES TO PREVENT FONT-ATLAS THRASHING (Massive GPU Saver)
         sz = Math.max(1, Math.round(sz));
 
         if (s.l !== undefined) ctx.globalAlpha = s.l > 0.2 ? 1 : s.l * 5;
@@ -1800,7 +1875,12 @@ function draw() {
     ctx.font = "145px serif";
     ctx.textAlign = "center";
 
-    if (currentToy === "🪄" && rainbowWandEnabled) {
+    let isRainbowActive = (currentToy === "🪄" && rainbowWandEnabled) ||
+                          (currentToy === "🍼" && rainbowMilkEnabled) ||
+                          (currentToy === "🛏️" && rainbowPillowEnabled) ||
+                          (currentToy === "🎵" && rainbowBoxEnabled);
+
+    if (isRainbowActive) {
         let hue = Math.floor(Date.now() * 0.2) % 360;
         ctx.filter = `hue-rotate(${hue}deg) drop-shadow(0 0 15px hsl(${hue}, 100%, 50%))`;
     }
