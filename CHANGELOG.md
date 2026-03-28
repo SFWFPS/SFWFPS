@@ -4,6 +4,14 @@
 
 **Project:** Single-file HTML5 raycasting game — a wholesome felt plushie game in the style of an oldschool 90s style FPS. Fully playable at https://sfwfps.com.
 
+**March 27, 2026**
+- RGB Toybox Expansion.
+- Toybox UI/menu + secret unlockables.
+- Plushie collectible system.
+- Framerate & mobile optimizations.
+- iOS updates + revert.
+- Multiple file tweaks (index.html, README.md, CHANGELOG.md) and a rename.
+
 **March 26, 2026**
 - Speed and mobile control optimization.
 - Updated share url
