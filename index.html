@@ -620,7 +620,7 @@
 // --- OBJECT POOL FOR PARTICLES ---
 const MAX_PARTICLES = 400;
 const particlePool = Array.from({ length: MAX_PARTICLES }, () => ({
-    active: false, x: 0, y: 0, vx: 0, vy: 0, l: 0, e: "", scale: 1, isParticle: true
+    active: false, x: 0, y: 0, vx: 0, vy: 0, l: 0, e: "", scale: 1, isParticle: true, distSq: 0
 }));
 let poolIdx = 0;
 
@@ -1063,31 +1063,31 @@ function loadLevel(idx) {
         if (original.pickup) {
             const mx = Math.floor(original.x), my = Math.floor(original.y);
             if (!mapData[my] || mapData[my][mx] !== 0) return;
-            sprites.push({...original, alive: true});
+            sprites.push({...original, alive: true, distSq: 0});
             return;
         }
         const placedPositions = [];
         for (let i = 0; i < qtyMult; i++) {
             const spawnPos = i === 0 ? {x: original.x, y: original.y} : getRandomSpreadPosition(placedPositions);
             placedPositions.push(spawnPos);
-            sprites.push({ ...original, x: spawnPos.x, y: spawnPos.y, hp: Math.round(3 * difficultyMult), alive: true, lastShot: Date.now() + 2000 + Math.random() * 1200, atkTimer: 0 });
+            sprites.push({ ...original, x: spawnPos.x, y: spawnPos.y, hp: Math.round(3 * difficultyMult), alive: true, lastShot: Date.now() + 2000 + Math.random() * 1200, atkTimer: 0, distSq: 0 });
         }
     });
 
     // CONDITIONAL PLUSHIE SPAWNS
     if (idx === 4) {  // boss floor only
         if (difficultyMult === 1.5) {
-            sprites.push({x: 3.5, y: 3.5, e: "🐨", plushieId: 3, pickup: true, alive: true});
+            sprites.push({x: 3.5, y: 3.5, e: "🐨", plushieId: 3, pickup: true, alive: true, distSq: 0});
         }
         if (difficultyMult === 2.0) {
-            sprites.push({x: 4.5, y: 2.5, e: "🦄", plushieId: 7, pickup: true, alive: true});
-            sprites.push({x: 7.5, y: 1.8, e: "🐯", plushieId: 11, pickup: true, alive: true});
+            sprites.push({x: 4.5, y: 2.5, e: "🦄", plushieId: 7, pickup: true, alive: true, distSq: 0});
+            sprites.push({x: 7.5, y: 1.8, e: "🐯", plushieId: 11, pickup: true, alive: true, distSq: 0});
         }
     }
 
     if (l.boss) {
         const bossMaxHp = Math.round(28 * difficultyMult);
-        sprites.push({ ...l.boss, hp: bossMaxHp, maxHp: bossMaxHp, alive: true, type: 'boss', lastShot: Date.now(), atkTimer: 0, strafeDir: 1, strafeTimer: 0 });
+        sprites.push({ ...l.boss, hp: bossMaxHp, maxHp: bossMaxHp, alive: true, type: 'boss', lastShot: Date.now(), atkTimer: 0, strafeDir: 1, strafeTimer: 0, distSq: 0 });
     }
     
     projectiles = []; 
@@ -1154,16 +1154,15 @@ window.onkeydown = e => {
 };
 window.onkeyup = e => keys[e.code] = false;
 
-domBoopBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doBoop(); });
-domBoopBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doBoop(); }, { passive: false });
-domSwapBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) swapWeapon(); });
-domSwapBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) swapWeapon(); }, { passive: false });
-domDodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!paused) doDodge(); });
-domDodgeBtn.addEventListener('touchstart', e => { e.preventDefault(); if (!paused) doDodge(); }, { passive: false });
+domBoopBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (!paused) doBoop(); });
+domSwapBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (!paused) swapWeapon(); });
+domDodgeBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (!paused) doDodge(); });
 
 let joyCenterX, joyCenterY;
 function setupJoystick() {
     joystickContainer.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        e.stopPropagation(); 
         if (paused || joyPointerId !== null) return;
         joyPointerId = e.pointerId; joyActive = true;
         const rect = joystickContainer.getBoundingClientRect();
@@ -1189,7 +1188,7 @@ function updateJoystick(e) {
 setupJoystick();
 
 viewportEl.addEventListener('pointerdown', e => {
-    if (paused || e.target.id === 'm-canvas' || e.target.id === 'player-face' || e.target.className.includes('btn')) return;
+    if (paused || e.target.closest('#bottom-controls-overlay') || e.target.closest('#top-hud-overlay') || e.target.closest('.util-btn') || e.target.id === 'm-canvas' || e.target.id === 'player-face') return;
     if (turnPointerId !== null) return;
     turnPointerId = e.pointerId; turnActive = true; lastTurnClientX = e.clientX;
 });
@@ -1218,7 +1217,7 @@ function doBoop() {
     } else if (currentToy === "🍼") { 
         let ang = player.dir + (Math.random()-0.5)*0.1; emitParticle(player.x + Math.cos(ang)*0.5, player.y + Math.sin(ang)*0.5, Math.cos(ang)*0.3, Math.sin(ang)*0.3, 1.0, "💧", 0.3); 
     } else {
-        // Magic Wand Particles (With Rainbow Skin Logic)
+        // Magic Wand Particles 
         let pEmojis = (rainbowWandEnabled && currentToy === "🪄") ? ["❤️", "🧡", "💛", "💚", "💙", "💜"] : ["🌸"];
         for(let i=0; i<8; i++) { 
             let ang = (player.dir - 0.2) + Math.random() * 0.4; 
@@ -1269,11 +1268,11 @@ function doBoop() {
             if (!s.type) {
                 let healthDropChance = player.hp <= 5 ? 0.60 : 0.25;
                 let roll = Math.random();
-                if (roll < healthDropChance) sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true});
-                else if (roll < healthDropChance + 0.15) sprites.push({x: s.x, y: s.y, e: "📦", pickup: true, alive: true});
+                if (roll < healthDropChance) sprites.push({x: s.x, y: s.y, e: "🧁", pickup: true, alive: true, distSq: 0});
+                else if (roll < healthDropChance + 0.15) sprites.push({x: s.x, y: s.y, e: "📦", pickup: true, alive: true, distSq: 0});
                 else if (roll < healthDropChance + 0.20) {
                     const toysList = ["🍼", "🛏️", "🎵"];
-                    sprites.push({x: s.x, y: s.y, e: toysList[Math.floor(Math.random() * toysList.length)], pickup: true, alive: true});
+                    sprites.push({x: s.x, y: s.y, e: toysList[Math.floor(Math.random() * toysList.length)], pickup: true, alive: true, distSq: 0});
                 }
             }
             checkWin();
@@ -1555,7 +1554,7 @@ function update(dt = 1) {
                 let sy = s.y + (s.strafeDir * 0.038); if (canMove(s.x, sy)) s.y = sy;
                 if (d < 12 && Date.now() - s.lastShot > 1900) {
                     let a = Math.atan2(player.y - s.y, player.x - s.x);
-                    projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.095, vy:Math.sin(a)*0.095, l:150, e:"💗", scale:0.65, isProj: true});
+                    projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.095, vy:Math.sin(a)*0.095, l:150, e:"💗", scale:0.65, isProj: true, distSq: 0});
                     s.lastShot = Date.now(); s.atkTimer = 480;
                 }
             }
@@ -1577,7 +1576,7 @@ function update(dt = 1) {
             }
             if (d < 8 && Date.now() - s.lastShot > 3900) {
                 let a = Math.atan2(player.y - s.y, player.x - s.x);
-                projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150, e:"💗", scale:0.65, isProj: true});
+                projectiles.push({x:s.x, y:s.y, vx:Math.cos(a)*0.085, vy:Math.sin(a)*0.085, l:150, e:"💗", scale:0.65, isProj: true, distSq: 0});
                 s.lastShot = Date.now(); s.atkTimer = 480;
             }
         }
@@ -1690,19 +1689,31 @@ function draw() {
     }
 
     displayList.length = 0;
-    for (let s of sprites) if (s.alive) displayList.push(s);
-    for (let p of projectiles) displayList.push(p);
-    for (let i = 0; i < MAX_PARTICLES; i++) if (particlePool[i].active) displayList.push(particlePool[i]);
+    
+    // PRE-CALCULATE DISTANCES ONCE BEFORE SORTING (Massive CPU Saver)
+    let px = player.x, py = player.y;
+    for (let s of sprites) {
+        if (s.alive) { s.distSq = (s.x - px)**2 + (s.y - py)**2; displayList.push(s); }
+    }
+    for (let p of projectiles) {
+        p.distSq = (p.x - px)**2 + (p.y - py)**2; displayList.push(p);
+    }
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+        let p = particlePool[i];
+        if (p.active) { p.distSq = (p.x - px)**2 + (p.y - py)**2; displayList.push(p); }
+    }
 
-    displayList.sort((a,b) => (b.x-player.x)**2 + (b.y-player.y)**2 - ((a.x-player.x)**2 + (a.y-player.y)**2));
+    displayList.sort((a,b) => b.distSq - a.distSq);
 
     const now = Date.now();
     const pickupPulse = 1 + Math.sin(now * 0.008) * 0.15;
     const glowIntensity = 22 + Math.sin(now * 0.012) * 8;
 
     displayList.forEach(s => {
-        let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
+        let dx = s.x - px, dy = s.y - py;
+        let dist = Math.sqrt(s.distSq);
         let ang = Math.atan2(dy, dx) - player.dir;
+        
         while (ang < -Math.PI) ang += Math.PI*2;
         while (ang > Math.PI) ang -= Math.PI*2;
         if (Math.abs(ang) >= 2.0) return;
@@ -1712,6 +1723,9 @@ function draw() {
         if (zBuf[zIndex] <= dist) return;
 
         let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.pickup ? 1.4 : (s.type === 'boss' ? 2.6 : 1)));
+        
+        // ROUND TEXT SIZES TO PREVENT FONT-ATLAS THRASHING (Massive GPU Saver)
+        sz = Math.max(1, Math.round(sz));
 
         if (s.l !== undefined) ctx.globalAlpha = s.l > 0.2 ? 1 : s.l * 5;
         else ctx.globalAlpha = 1;
@@ -1738,13 +1752,13 @@ function draw() {
                 if (s.plushieId !== undefined) {
                     ctx.shadowColor = '#ffff00';
                     ctx.shadowBlur = 32 + Math.sin(now * 0.015) * 14;
-                    sz *= 1.18;
+                    sz = Math.round(sz * 1.18);
                 } else {
                     ctx.shadowColor = '#ffff99';
                     ctx.shadowBlur = glowIntensity;
                 }
                 ctx.globalAlpha = 1.0;
-                sz *= pickupPulse;
+                sz = Math.round(sz * pickupPulse);
             }
 
             ctx.font = `${sz}px serif`;
@@ -1786,9 +1800,8 @@ function draw() {
     ctx.font = "145px serif";
     ctx.textAlign = "center";
 
-    // APPLY RAINBOW FILTER IF ENABLED
     if (currentToy === "🪄" && rainbowWandEnabled) {
-        let hue = (Date.now() * 0.2) % 360;
+        let hue = Math.floor(Date.now() * 0.2) % 360;
         ctx.filter = `hue-rotate(${hue}deg) drop-shadow(0 0 15px hsl(${hue}, 100%, 50%))`;
     }
 
