@@ -771,6 +771,17 @@ function enterFullscreen() {
     }
 }
 
+// --- DYNAMIC START MENU BACKGROUND ---
+function updateStartMenuBackground() {
+    let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
+    let startMenu = document.getElementById('start-menu');
+    if (collection.includes(12)) {
+        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg')";
+    } else {
+        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg')";
+    }
+}
+
 // --- PROCEDURAL PARALLAX SKYBOXES (DAWN, DAY, SUNSET, AND NIGHT) ---
 // Dawn Sky (Level 1)
 const morningSkyCanvas = document.createElement('canvas');
@@ -1375,6 +1386,7 @@ function returnToMenu() {
     document.getElementById('name-entry-menu').style.display = 'none';
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
+    updateStartMenuBackground();
     document.getElementById('start-menu').style.display = 'flex';
 }
 
@@ -2521,6 +2533,9 @@ function drawMinimap() {
     mCtx.arc(player.x * cw, player.y * ch, 3.5, 0, Math.PI * 2);
     mCtx.fill();
 }
+
+// Call on initial load to set correct background if already unlocked
+updateStartMenuBackground();
 
 function loop() {
     const now = performance.now();
