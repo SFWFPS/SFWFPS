@@ -771,20 +771,97 @@ function enterFullscreen() {
     }
 }
 
-// --- PROCEDURAL PARALLAX SKYBOX ---
-const skyCanvas = document.createElement('canvas');
-skyCanvas.width = 800; 
-skyCanvas.height = 200;
-const skyCtx = skyCanvas.getContext('2d');
-skyCtx.fillStyle = '#0a0825'; 
-skyCtx.fillRect(0, 0, 800, 200);
+// --- PROCEDURAL PARALLAX SKYBOXES (DAWN, DAY, SUNSET, AND NIGHT) ---
+// Dawn Sky (Level 1)
+const morningSkyCanvas = document.createElement('canvas');
+morningSkyCanvas.width = 800;
+morningSkyCanvas.height = 200;
+const morningCtx = morningSkyCanvas.getContext('2d');
+let morningGrad = morningCtx.createLinearGradient(0, 0, 0, 200);
+// Deepening colors for dawn skyline
+morningGrad.addColorStop(0, '#1a237e'); // Deep Indigo at top
+morningGrad.addColorStop(0.5, '#ad1457'); // Crimson/Magenta middle
+morningGrad.addColorStop(1, '#ff9100'); // Vibrant Orange at horizon
+morningCtx.fillStyle = morningGrad;
+morningCtx.fillRect(0, 0, 800, 200);
+
+morningCtx.fillStyle = '#ffcc80'; // Peach tinted clouds
+morningCtx.globalAlpha = 0.3; // Very soft, wispy clouds catching first light
+for(let i=0; i<10; i++) {
+    let cx = Math.random() * 800;
+    let cy = Math.random() * 80 + 20; // High clouds
+    let cr = 10 + Math.random() * 15;
+    morningCtx.beginPath();
+    morningCtx.arc(cx, cy, cr, 0, Math.PI*2);
+    morningCtx.arc(cx+cr*0.8, cy-cr*0.3, cr*1.2, 0, Math.PI*2);
+    morningCtx.fill();
+}
+morningCtx.globalAlpha = 1.0;
+
+// Night Sky (Boss Level)
+const nightSkyCanvas = document.createElement('canvas');
+nightSkyCanvas.width = 800; 
+nightSkyCanvas.height = 200;
+const nightCtx = nightSkyCanvas.getContext('2d');
+nightCtx.fillStyle = '#0a0825'; 
+nightCtx.fillRect(0, 0, 800, 200);
 
 for(let i=0; i<150; i++) {
-    skyCtx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#ffc0cb';
-    skyCtx.globalAlpha = Math.random() * 0.8 + 0.2;
-    skyCtx.fillRect(Math.floor(Math.random() * 800), Math.floor(Math.random() * 200), 2, 2);
+    nightCtx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#ffc0cb';
+    nightCtx.globalAlpha = Math.random() * 0.8 + 0.2;
+    nightCtx.fillRect(Math.floor(Math.random() * 800), Math.floor(Math.random() * 200), 2, 2);
 }
-skyCtx.globalAlpha = 1.0;
+nightCtx.globalAlpha = 1.0;
+
+// Sunset Sky (Pre-Boss Level)
+const sunsetSkyCanvas = document.createElement('canvas');
+sunsetSkyCanvas.width = 800;
+sunsetSkyCanvas.height = 200;
+const sunsetCtx = sunsetSkyCanvas.getContext('2d');
+let sunsetGrad = sunsetCtx.createLinearGradient(0, 0, 0, 200);
+sunsetGrad.addColorStop(0, '#512da8'); // Deep Purple at top
+sunsetGrad.addColorStop(1, '#ff5722'); // Deep Orange at bottom
+sunsetCtx.fillStyle = sunsetGrad;
+sunsetCtx.fillRect(0, 0, 800, 200);
+
+sunsetCtx.fillStyle = '#ffcc80';
+sunsetCtx.globalAlpha = 0.5;
+for(let i=0; i<10; i++) {
+    let cx = Math.random() * 800;
+    let cy = 50 + Math.random() * 100; // Lower clouds
+    let cr = 20 + Math.random() * 30;
+    sunsetCtx.beginPath();
+    sunsetCtx.arc(cx, cy, cr, 0, Math.PI*2);
+    sunsetCtx.arc(cx+cr*0.8, cy-cr*0.3, cr*1.2, 0, Math.PI*2);
+    sunsetCtx.arc(cx+cr*1.6, cy, cr*0.1, 0, Math.PI*2);
+    sunsetCtx.fill();
+}
+sunsetCtx.globalAlpha = 1.0;
+
+// Day Sky (Regular Levels)
+const daySkyCanvas = document.createElement('canvas');
+daySkyCanvas.width = 800;
+daySkyCanvas.height = 200;
+const dayCtx = daySkyCanvas.getContext('2d');
+let dayGrad = dayCtx.createLinearGradient(0, 0, 0, 200);
+dayGrad.addColorStop(0, '#4fc3f7');
+dayGrad.addColorStop(1, '#e1f5fe');
+dayCtx.fillStyle = dayGrad;
+dayCtx.fillRect(0, 0, 800, 200);
+
+dayCtx.fillStyle = '#ffffff';
+dayCtx.globalAlpha = 0.6;
+for(let i=0; i<15; i++) {
+    let cx = Math.random() * 800;
+    let cy = Math.random() * 120;
+    let cr = 15 + Math.random() * 25;
+    dayCtx.beginPath();
+    dayCtx.arc(cx, cy, cr, 0, Math.PI*2);
+    dayCtx.arc(cx+cr*0.8, cy-cr*0.3, cr*1.2, 0, Math.PI*2);
+    dayCtx.arc(cx+cr*1.6, cy, cr*0.1, 0, Math.PI*2);
+    dayCtx.fill();
+}
+dayCtx.globalAlpha = 1.0;
 
 
 // --- OBJECT POOL FOR PARTICLES ---
@@ -1136,7 +1213,10 @@ const assets = {
     bossIdle: new Image(), bossAtk: new Image(), bossPhase2: new Image(),
     wall1: new Image(), wall2: new Image(), wall3: new Image(),
     portal: new Image(),
-    skybox: skyCanvas, 
+    morningSkybox: morningSkyCanvas,
+    daySkybox: daySkyCanvas,
+    sunsetSkybox: sunsetSkyCanvas,
+    nightSkybox: nightSkyCanvas, 
     floorTex: new Image(),
     arvenPlush: new Image()
 };
@@ -2102,10 +2182,19 @@ function draw() {
     if (shake > 0) ctx.translate((Math.random()-0.5)*22*shake, (Math.random()-0.5)*22*shake);
 
     // --- DRAW PROCEDURAL PARALLAX SKYBOX ---
+    let currentSkybox = assets.daySkybox;
+    if (levelIdx === 0) {
+        currentSkybox = assets.morningSkybox;
+    } else if (levelIdx === 4) {
+        currentSkybox = assets.nightSkybox;
+    } else if (levelIdx === 3) {
+        currentSkybox = assets.sunsetSkybox;
+    }
+    
     let skyOffset = -(player.dir * 200) % 800;
     if (skyOffset > 0) skyOffset -= 800;
-    ctx.drawImage(assets.skybox, skyOffset, -50, 800, 200);
-    ctx.drawImage(assets.skybox, skyOffset + 800, -50, 800, 200);
+    ctx.drawImage(currentSkybox, skyOffset, -50, 800, 200);
+    ctx.drawImage(currentSkybox, skyOffset + 800, -50, 800, 200);
 
     // --- TRUE FLOORCASTING ---
     if (floorPixels) {
