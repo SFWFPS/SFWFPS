@@ -617,7 +617,7 @@
     </div>
 
 <script>
-// --- GAME RESOLUTION UPGRADE (this is the single most important visual improvement) ---
+// --- GAME RESOLUTION UPGRADE ---
 const WIDTH = 640;
 const HEIGHT = 480;
 // -------------------------------------------------------
@@ -763,6 +763,7 @@ function showScoresMenu() {
         : scores.map((s, i) => `<div class="score-row"><span>${(i+1).toString().padStart(2,'0')}. ${s.name}</span> <span style="color:var(--pink); text-shadow: 0 0 5px var(--pink);">${s.score}</span></div>`).join('');
     document.getElementById('scores-list').innerHTML = html;
     document.getElementById('scores-menu').style.display = 'flex';
+    ensureFullscreenIfLandscape();
 }
 
 function hideScoresMenu() { document.getElementById('scores-menu').style.display = 'none'; }
@@ -801,6 +802,7 @@ function showGalleryMenu() {
         grid.appendChild(slot);
     });
     document.getElementById('gallery-menu').style.display = 'flex';
+    ensureFullscreenIfLandscape();
 }
 
 function hideGalleryMenu() { document.getElementById('gallery-menu').style.display = 'none'; }
@@ -883,7 +885,6 @@ function showToyboxMenu() {
         grid.appendChild(slot);
     }
 
-    // APPEND RAINBOW SKIN TOGGLE SLOTS
     let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
     if (collection.length >= 12) {
         grid.appendChild(createRainbowSlot("🪄", "Rainbow Wand", "Legendary skin unlocked!", rainbowWandEnabled, "toggleRainbowWand"));
@@ -899,6 +900,7 @@ function showToyboxMenu() {
     }
     
     document.getElementById('toybox-menu').style.display = 'flex';
+    ensureFullscreenIfLandscape();
 }
 
 function toggleRainbowWand(e) {
@@ -1020,24 +1022,27 @@ const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints >
 const orientationMedia = window.matchMedia("(orientation: landscape)");
 
 // ====================
-// LANDSCAPE AUTOFULLSCREEN ON EVERY SCREEN (mobile QoL improvement)
+// LANDSCAPE AUTOFULLSCREEN ON EVERY SCREEN (fixed for start/victory menus)
 // ====================
+function ensureFullscreenIfLandscape() {
+    if (!isMobileDevice || !orientationMedia.matches) return;
+    const doc = window.document;
+    const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+    if (!currentlyFullscreen) {
+        toggleFullscreen();
+    }
+}
+
 function handleOrientationChange(e) {
     if (e.matches && isMobileDevice) {
-        const doc = window.document;
-        const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-        if (!currentlyFullscreen) {
-            toggleFullscreen();
-        }
+        ensureFullscreenIfLandscape();
     }
 }
 orientationMedia.addEventListener("change", handleOrientationChange);
 
-// Initial load check (covers start menu, overlays, etc. if device is already in landscape)
+// Initial check (safe for start menu)
 if (orientationMedia.matches && isMobileDevice) {
-    setTimeout(() => {
-        toggleFullscreen();
-    }, 800);
+    setTimeout(ensureFullscreenIfLandscape, 800);
 }
 
 function togglePause() {
@@ -1053,9 +1058,16 @@ function toggleFullscreen() {
     const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
     if (request) {
         if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-            request.call(docEl).catch(() => applyiOSFullscreenFallback(vp));
+            request.call(docEl).catch(() => {
+                // Only apply iOS fallback when actually in-game (prevents start-menu being covered by black viewport)
+                if (gameActive) {
+                    applyiOSFullscreenFallback(vp);
+                }
+            });
         } else if (cancel) cancel.call(doc);
-    } else applyiOSFullscreenFallback(vp);
+    } else if (gameActive) {
+        applyiOSFullscreenFallback(vp);
+    }
 }
 
 function applyiOSFullscreenFallback(el) {
@@ -1078,6 +1090,7 @@ function returnToMenu() {
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
     document.getElementById('start-menu').style.display = 'flex';
+    ensureFullscreenIfLandscape();   // ← fixed: re-ensure fullscreen for start menu
 }
 
 function initGame() {
@@ -1402,7 +1415,6 @@ function showEnd(msg) {
     let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
     
     if (isWin) {
-        // Unlock Rainbow Skins dynamically
         if (difficultyMult === 1.0 && !rainbowMilkUnlocked) {
             localStorage.setItem('rainbowMilkUnlocked', 'true');
             rainbowMilkUnlocked = true;
@@ -1437,6 +1449,7 @@ function showEnd(msg) {
             window.open(`https://x.com/intent/post?text=${encodeURIComponent(fullPost)}`, '_blank');
         });
     };
+    ensureFullscreenIfLandscape();   // ← fixed: re-enter fullscreen for victory menu
 }
 
 document.getElementById('retry-btn').onclick = returnToMenu;
@@ -1727,11 +1740,10 @@ function updatePortalTexture() {
 function draw() {
     if (portalActive) updatePortalTexture();
     ctx.save();
-    let currentBob = Math.sin(bob) * 18;   // scaled for new resolution
+    let currentBob = Math.sin(bob) * 18;
     ctx.translate(0, currentBob);
     if (shake > 0) ctx.translate((Math.random()-0.5)*22*shake, (Math.random()-0.5)*22*shake);
 
-    // Updated sky & floor gradients for 640×480
     if (!cachedFloorGrad) {
         cachedFloorGrad = ctx.createLinearGradient(0, 240, 0, 480);
         cachedFloorGrad.addColorStop(0, '#111'); cachedFloorGrad.addColorStop(1, '#000');
@@ -1908,7 +1920,7 @@ function draw() {
     if (currentToy !== "🪄") {
         ctx.font = "24px 'Arial Rounded MT Bold', sans-serif";
         ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
-        const ammoX = WIDTH * 0.625;   // scaled from original 250
+        const ammoX = WIDTH * 0.625;
         ctx.strokeText(toyAmmo[currentToy], ammoX + wandSway, HEIGHT - 50 + currentBob);
         ctx.fillText(toyAmmo[currentToy], ammoX + wandSway, HEIGHT - 50 + currentBob);
     }
