@@ -76,9 +76,8 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <h1 id="countDisplay">0</h1>
+    <h1 id="countDisplay">8</h1>
     <button onclick="increase()">Count Up</button>
-
     <script>
         let count = 0;
         function increase() {
