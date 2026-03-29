@@ -2477,7 +2477,26 @@ function draw() {
 
     if (isRainbowActive) {
         let hue = Math.floor(Date.now() * 0.2) % 360;
-        ctx.filter = `hue-rotate(${hue}deg) drop-shadow(0 0 15px hsl(${hue}, 100%, 50%))`;
+        
+        // --- 1. Guaranteed iOS-Safe Radial Aura ---
+        let rg = ctx.createRadialGradient(0, -40, 10, 0, -40, 80);
+        rg.addColorStop(0, `hsla(${hue}, 100%, 60%, 0.8)`);
+        rg.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`);
+        ctx.fillStyle = rg;
+        ctx.beginPath();
+        ctx.arc(0, -40, 80, 0, Math.PI*2);
+        ctx.fill();
+
+        // --- 2. Native Canvas Shadow (Better support than drop-shadow) ---
+        ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+        ctx.shadowBlur = 25;
+        
+        // --- 3. Attempt Hue Rotate (iOS may ignore on emojis, but aura covers it) ---
+        ctx.filter = `hue-rotate(${hue}deg)`;
+    } else {
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.filter = "none";
     }
 
     ctx.fillText(currentToy, 0, 0);
