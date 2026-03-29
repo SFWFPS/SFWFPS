@@ -71,9 +71,7 @@
 - Project launch with core engine  
 - Created and expanded detailed README.md  
 
-**Status:** 189 commits in 
-
-<!DOCTYPE html>
+**Status:** 189 commits in <!DOCTYPE html>
 <html>
 <body>
     <h1 id="countDisplay">8</h1>
@@ -86,6 +84,4 @@
         }
     </script>
 </body>
-</html>
-
-days. All logic lives in one `index.html` file.
+</html> days. All logic lives in one `index.html` file.
