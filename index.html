@@ -192,6 +192,11 @@
             filter: drop-shadow(0 0 8px var(--sky));
             transition: transform 0.2s;
             z-index: 16;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #boss-hud {
@@ -828,6 +833,8 @@ canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80
 
 let displayList = [];                      
 let lastHP = -1, lastScoreText = '', lastHi = -1, lastMultText = '', lastCombo = -1;
+let shieldCooldownTimer = 0;
+let lastHPText = '';
 let lastFaceUrl = '', lastIsDodging = false, lastVignetteOpacity = -1, lastDodgeReady = true;
 
 // High Score Entry State
@@ -973,7 +980,8 @@ const PLUSHIES = [
     {id:8,emoji:"🐱",name:"Mittens",desc:"Cupcakes heal double (+10 HP)"},
     {id:9,emoji:"🐶",name:"Woofles",desc:"Huge pickup range & spots foes on map"},
     {id:10,emoji:"🦁",name:"Leo the Brave",desc:"+1 Weapon Damage"},
-    {id:11,emoji:"🐯",name:"Tiggy",desc:"Combo meter drains 50% slower"}
+    {id:11,emoji:"🐯",name:"Tiggy",desc:"Combo meter drains 50% slower"},
+    {id:12, isImage:true, url:'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/arvenplush.png', emoji:"🐶", name:"Arven", desc:"+1 shield that regens every 10s"}
 ];
 
 function showGalleryMenu() {
@@ -992,8 +1000,12 @@ function showGalleryMenu() {
             slot.style.boxShadow = 'inset 0 0 15px rgba(255, 20, 147, 0.4)';
         }
 
+        let emojiHTML = p.isImage
+            ? `<img src="${p.url}" style="width:42px;height:42px;margin-bottom:6px;filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'}; border-radius: 8px;">`
+            : `<div style="font-size:42px;margin-bottom:6px;filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};">${p.emoji}</div>`;
+
         slot.innerHTML = `
-            <div style="font-size:42px;margin-bottom:6px;filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};">${p.emoji}</div>
+            ${emojiHTML}
             <div style="font-size:14px;font-weight:bold;color:white;">${p.name}</div>
             <div style="font-size:11px;color:${isCollected?'var(--pink)':'#777'};margin-top:4px;">${isCollected?p.desc:'??? Locked ???'}</div>
             ${isCollected ? `<div style="margin-top:8px; font-size:11px; color: ${isEquipped ? 'var(--hot-pink)' : 'var(--sky)'}; font-weight:bold;">${isEquipped ? '★ EQUIPPED ★' : 'CLICK TO EQUIP'}</div>` : ''}
@@ -1125,7 +1137,8 @@ const assets = {
     wall1: new Image(), wall2: new Image(), wall3: new Image(),
     portal: new Image(),
     skybox: skyCanvas, 
-    floorTex: new Image()
+    floorTex: new Image(),
+    arvenPlush: new Image()
 };
 
 // Configure crossOrigin BEFORE setting src so we can securely read the floor pixels!
@@ -1147,6 +1160,7 @@ assets.wall2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads
 assets.wall3.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall3.jpg';
 assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image%20(1).jpg';
 assets.floorTex.src = 'https://raw.githubusercontent.com/sfwdoom/PLUSHIEQUEST/refs/heads/photos/floor1.jpg';
+assets.arvenPlush.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/arvenplush.png';
 
 let floorPixels = null;
 let floorWidth = 64, floorHeight = 64;
@@ -1191,7 +1205,10 @@ const MAPS = [
     ], isSecret:true },
     { n: "The Starry Summit", tex: assets.wall3, m: [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]], start: [1.5,2.5], enemies: [
         {x:3.5,y:1.8,e:"🦁",plushieId:10,pickup:true}
-    ], boss: {x:8,y:2.5,e:"BOSS_FINAL"} }
+    ], boss: {x:8,y:2.5,e:"BOSS_FINAL"} },
+    { n: "The Secret Doghouse", tex: assets.wall3, m: [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]], start: [2.5, 3.5], enemies: [
+        {x: 2.5, y: 1.5, e: "ARVEN_PLUSH", plushieId: 12, pickup: true, isObjective: true}
+    ], isSecret: true }
 ];
 
 let levelIdx = 0, player, sprites = [], projectiles = [], keys = {};
@@ -1281,7 +1298,7 @@ function returnToMenu() {
 }
 
 function initGame() {
-    player = { x: 0, y: 0, dir: 0, hp: 15, score: 0, combo: 0, mult: 1 };
+    player = { x: 0, y: 0, dir: 0, hp: 15, score: 0, combo: 0, mult: 1, shield: 0 };
     levelIdx = 0; gameActive = true; isLoading = false; maxMultSeen = 1; levelTransitioning = false;
     portalActive = false; hitFlash = 0; paused = false;
     resetParticles();
@@ -1291,6 +1308,7 @@ function initGame() {
     weaponUsage = { "🪄": 0, "🍼": 0, "🛏️": 0, "🎵": 0 };
     totalBoops = 0; highestCombo = 0; totalPlushiesSaved = 0;
     palRegenTimer = 0;
+    shieldCooldownTimer = 0;
     lastDamageTime = Date.now();
     isDodging = false; dodgeTime = 0; lastDodgeTime = 0; dodgeDx = 0; dodgeDy = 0;
     document.getElementById('name-entry-menu').style.display = 'none';
@@ -1580,9 +1598,27 @@ function spawnParticles(x, y, char, count) {
 }
 
 function checkWin() {
-    const enemiesRemaining = sprites.some(s => s.alive && !s.pickup);
+    const enemiesRemaining = sprites.some(s => s.alive && (!s.pickup || s.isObjective));
     if (!enemiesRemaining) {
-        if (levelIdx === 4) { showEnd("VICTORY! 🏆"); return; }
+        if (levelIdx === 4) {
+            let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
+            let hasSeenSecret = localStorage.getItem('hasSeenSecretLevel') === 'true';
+            let allUnlocked = collection.length >= 12 && rainbowMilkUnlocked && rainbowBoxUnlocked && rainbowPillowUnlocked;
+            
+            if (difficultyMult === 2.0 && allUnlocked && !hasSeenSecret) {
+                localStorage.setItem('hasSeenSecretLevel', 'true');
+                loadLevel(5); // Transport to Arven's Doghouse
+                return;
+            }
+            showEnd("VICTORY! 🏆"); 
+            return; 
+        }
+        
+        if (levelIdx === 5) {
+            showEnd("SECRET FOUND! 🐶");
+            return;
+        }
+
         if (!portalActive) {
             let exitX = 6.5, exitY = 5.5;
             if (levelIdx === 1) { exitX = 6.5; exitY = 1.5; }
@@ -1626,7 +1662,7 @@ function showEnd(msg) {
 function displayFinalEndScreen(msg, currentScore) {
     const overlay = document.getElementById('overlay');
     const shareBtn = document.getElementById('share-btn');
-    const isWin = msg.includes("VICTORY");
+    const isWin = msg.includes("VICTORY") || msg.includes("SECRET");
     overlay.style.borderColor = isWin ? "var(--sky)" : "var(--hot-pink)";
     
     let highScore = parseInt(localStorage.getItem('sfwFpsHiScore') || '0');
@@ -1659,8 +1695,8 @@ function displayFinalEndScreen(msg, currentScore) {
         statsHTML += `<br><span style="color:#b28dff;">⭐ Most Used: ${favWeapon} ${weaponName}</span>`;
         const collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
         const collectedCount = collection.length;
-        statsHTML += `<br><span style="color:#ffcc00;">🧸 Plushies Collected: <strong>${collectedCount}/12</strong></span>`;
-        if (collectedCount === 12) statsHTML += `<br><span style="color:#ffd700; font-size:15px;">🌟 ALL PLUSHIES SAVED! YOU ARE A LEGEND! 🌟</span>`;
+        statsHTML += `<br><span style="color:#ffcc00;">🧸 Plushies Collected: <strong>${collectedCount}/${PLUSHIES.length}</strong></span>`;
+        if (collectedCount >= 12) statsHTML += `<br><span style="color:#ffd700; font-size:15px;">🌟 ALL PLUSHIES SAVED! YOU ARE A LEGEND! 🌟</span>`;
     }
     document.getElementById('final-stats').innerHTML = statsHTML;
     shareBtn.onclick = () => {
@@ -1687,16 +1723,39 @@ function update(dt = 1) {
         }
     }
 
+    // --- ARVEN SHIELD REGEN ---
+    if (equippedPalId === 12) {
+        if (player.shield < 1) {
+            shieldCooldownTimer += dt * 16.66;
+            if (shieldCooldownTimer >= 10000) {
+                player.shield = 1;
+                shieldCooldownTimer = 0;
+                spawnParticles(player.x, player.y, "🛡️", 5);
+                playSound('sine', 800, 150, 0.2); 
+            }
+        }
+    } else {
+        player.shield = 0;
+    }
+
     // --- HUD UPDATE FOR PALS ---
     if (equippedPalId !== -1) {
         const pal = PLUSHIES.find(p => p.id === equippedPalId);
-        if (pal && domPalHud.textContent !== pal.emoji) {
-            domPalHud.textContent = pal.emoji;
+        if (pal && (domPalHud.getAttribute('data-id') !== pal.id.toString())) {
+            domPalHud.setAttribute('data-id', pal.id);
+            if (pal.isImage) {
+                domPalHud.innerHTML = `<img src="${pal.url}" style="width:80%;height:80%;object-fit:contain;border-radius:6px;filter:drop-shadow(0 0 8px var(--sky));">`;
+            } else {
+                domPalHud.innerHTML = pal.emoji;
+            }
             domPalHud.style.transform = "scale(1.3)";
             setTimeout(() => domPalHud.style.transform = "scale(1)", 200);
         }
     } else {
-        domPalHud.textContent = '';
+        if(domPalHud.getAttribute('data-id') !== null) {
+            domPalHud.innerHTML = '';
+            domPalHud.removeAttribute('data-id');
+        }
     }
 
     const gp = currentGp;
@@ -1823,8 +1882,28 @@ function update(dt = 1) {
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
     if (player.combo > highestCombo) highestCombo = player.combo;
 
+    // --- UPDATED HUD SHIELD LOGIC ---
     const currentHP = Math.max(0, Math.floor(player.hp));
-    if (currentHP !== lastHP) { domHpDisplay.textContent = `❤️ x${currentHP}`; lastHP = currentHP; }
+    let shieldIndicator = "";
+    
+    if (equippedPalId === 12) { // Arven is equipped
+        if (player.shield > 0) {
+            // Glowing, bright indicator when the shield is ready to take a hit
+            shieldIndicator = ` <span style="color: var(--sky); text-shadow: 0 0 10px var(--sky);">🛡️ UP</span>`;
+        } else {
+            // Faded, grayed-out countdown timer while it cools down
+            let cdSecs = Math.max(1, Math.ceil((10000 - shieldCooldownTimer) / 1000));
+            shieldIndicator = ` <span style="color: #888; text-shadow: none; opacity: 0.7;">🛡️ ${cdSecs}s</span>`;
+        }
+    }
+
+    const hpHTML = `❤️ x${currentHP}${shieldIndicator}`;
+    
+    // Using innerHTML instead of textContent so our span styling applies
+    if (hpHTML !== lastHPText) { 
+        domHpDisplay.innerHTML = hpHTML; 
+        lastHPText = hpHTML; 
+    }
 
     const bonusText = untouchedSecs > 5 ? ` 🛡️+${Math.floor(untouchedSecs)}` : "";
     const scoreText = `✨ ${Math.floor(player.score)}${bonusText}`;
@@ -1905,6 +1984,12 @@ function update(dt = 1) {
                         spawnParticles(player.x, player.y, "✨", 25);
                         player.score += 500 * player.mult;
                         hitFlash = 0.8;
+                    } else if (player.shield > 0) {
+                        player.shield--;
+                        shieldCooldownTimer = 0;
+                        shake = 1.0;
+                        spawnParticles(player.x, player.y, "🛡️", 15);
+                        playSound('sine', 600, 150, 0.4, -300);
                     } else {
                         player.hp = 0; shake = 2.0; lastDamageTime = Date.now();
                         playSound('triangle', 100, 600, 0.5, -100);
@@ -1957,6 +2042,14 @@ function update(dt = 1) {
             p.x += stepVx; p.y += stepVy;
             if (Math.hypot(p.x - player.x, p.y - player.y) < 0.45) {
                 if (isDodging) { spawnParticles(p.x, p.y, "💨", 3); removed = true; }
+                else if (player.shield > 0) {
+                    player.shield--;
+                    shieldCooldownTimer = 0;
+                    shake = 0.5;
+                    spawnParticles(player.x, player.y, "🛡️", 8);
+                    playSound('sine', 600, 100, 0.3, -200);
+                    removed = true;
+                }
                 else {
                     let damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
                     // Berry Bear Damage Reduction Buff
@@ -2162,6 +2255,10 @@ function draw() {
             if (s.isPhase2) { bossImg = assets.bossPhase2; sxOffset = (Math.random() - 0.5) * 8; }
             else if (s.atkTimer > 0) bossImg = assets.bossAtk;
             ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 150 - sz/2, sz, sz);
+        } else if (s.e === "ARVEN_PLUSH") {
+            if (assets.arvenPlush.complete) {
+                ctx.drawImage(assets.arvenPlush, sx - sz/2, 150 - sz/2, sz, sz);
+            }
         } else {
             if (!s.isParticle && !s.isProj) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
@@ -2270,7 +2367,12 @@ function draw() {
                 ctx.fill();
             }
             
-            ctx.fillText(pal.emoji, 0, 0);
+            if (pal.isImage && assets.arvenPlush.complete) {
+                ctx.filter = 'none';
+                ctx.drawImage(assets.arvenPlush, -40, -60, 80, 80);
+            } else {
+                ctx.fillText(pal.emoji, 0, 0);
+            }
             ctx.restore();
         }
     }
