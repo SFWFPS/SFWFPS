@@ -71,4 +71,22 @@
 - Project launch with core engine  
 - Created and expanded detailed README.md  
 
-**Status:** 189 commits in 7 days. All logic lives in one `index.html` file.
+**Status:** 189 commits in 
+
+<!DOCTYPE html>
+<html>
+<body>
+    <h1 id="countDisplay">0</h1>
+    <button onclick="increase()">Count Up</button>
+
+    <script>
+        let count = 0;
+        function increase() {
+            count++;
+            document.getElementById("countDisplay").textContent = count; // Updates count
+        }
+    </script>
+</body>
+</html>
+
+days. All logic lives in one `index.html` file.
