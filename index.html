@@ -48,7 +48,7 @@
             inset: 0; 
             background-color: #1a1a1a;
             background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
-                              url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg');
+                              url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=2');
             background-size: cover;
             background-position: center;
             z-index: 10000; 
@@ -594,6 +594,14 @@
     </style>
 </head>
 <body>
+<script>
+    // PRELOAD START MENU BACKGROUNDS TO FIX IOS SAFARI CACHING BUG
+    const preloadImg1 = new Image();
+    preloadImg1.src = "https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=2";
+    const preloadImg2 = new Image();
+    preloadImg2.src = "https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg?v=2";
+</script>
+
     <div id="start-menu">
         <div class="logo-container">
             <h1 class="logo-main">SFWFPS</h1>
@@ -777,9 +785,9 @@ function updateStartMenuBackground() {
     let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
     let startMenu = document.getElementById('start-menu');
     if (collection.includes(12)) {
-        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg')";
+        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg?v=2')";
     } else {
-        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg')";
+        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=2')";
     }
     startMenu.style.backgroundSize = "cover";
     startMenu.style.backgroundPosition = "center";
@@ -792,6 +800,7 @@ morningSkyCanvas.width = 800;
 morningSkyCanvas.height = 200;
 const morningCtx = morningSkyCanvas.getContext('2d');
 let morningGrad = morningCtx.createLinearGradient(0, 0, 0, 200);
+// Deepening colors for dawn skyline
 morningGrad.addColorStop(0, '#1a237e'); // Deep Indigo at top
 morningGrad.addColorStop(0.5, '#ad1457'); // Crimson/Magenta middle
 morningGrad.addColorStop(1, '#ff9100'); // Vibrant Orange at horizon
