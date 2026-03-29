@@ -54,10 +54,14 @@
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            justify-content: center; 
+            justify-content: flex-start; 
             color: white; 
             overflow-y: auto;
             padding: 20px;
+        }
+        #start-menu::before, #start-menu::after {
+            content: '';
+            margin: auto;
         }
 
         .logo-container { text-align: center; margin-bottom: 30px; pointer-events: none; }
@@ -148,10 +152,20 @@
         #face-hud { 
             position: absolute; top: 95px; right: 10px; width: 80px; height: 80px; 
             background: rgba(255, 182, 193, 0.35); border: 3px solid var(--pink); border-radius: 10px; 
-            overflow: hidden; display: flex; align-items: center; justify-content: center; 
+            overflow: visible; display: flex; align-items: center; justify-content: center; 
             z-index: 15;
         }
-        #player-face { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+        #player-face { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; border-radius: 6px; }
+        
+        #pal-hud {
+            position: absolute;
+            bottom: -10px;
+            left: -10px;
+            font-size: 28px;
+            filter: drop-shadow(0 0 8px var(--sky));
+            transition: transform 0.2s;
+            z-index: 16;
+        }
 
         #boss-hud {
             position: absolute;
@@ -347,13 +361,17 @@
         .overlay { 
             display: none; position: fixed; inset: 0; 
             background: radial-gradient(circle, rgba(45, 27, 46, 0.97) 0%, rgba(0,0,0,0.99) 100%); 
-            z-index: 100; color: white; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 100; color: white; flex-direction: column; align-items: center; justify-content: flex-start; 
             text-align: center; backdrop-filter: blur(12px);
             border: 6px solid var(--hot-pink); box-shadow: inset 0 0 60px rgba(255, 20, 147, 0.4);
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             padding: 20px;
             box-sizing: border-box;
+        }
+        .overlay::before, .overlay::after {
+            content: '';
+            margin: auto;
         }
         .overlay-btns { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; margin-bottom: 20px; }
         .overlay-btns button { 
@@ -373,10 +391,10 @@
 
         #gallery-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 14px;
             width: 100%;
-            max-width: 440px;
+            max-width: 500px;
             margin: 0 auto;
             padding: 0 10px;
         }
@@ -387,9 +405,14 @@
             border-radius: 12px;
             padding: 10px 6px;
             transition: all 0.2s;
+            position: relative;
         }
         .plushie-slot.collected {
             border-color: var(--sky);
+        }
+        .plushie-slot.collected:hover {
+            transform: scale(1.05);
+            background: rgba(255,255,255,0.15);
         }
 
         /* TOYBOX STYLES */
@@ -431,13 +454,28 @@
             padding: 4px;
         }
 
-        /* RAINBOW SKIN ANIMATION */
+        /* RAINBOW SKIN ANIMATIONS */
         @keyframes rainbow-hue {
             0% { filter: hue-rotate(0deg) drop-shadow(0 0 12px var(--sky)); }
             100% { filter: hue-rotate(360deg) drop-shadow(0 0 12px var(--sky)); }
         }
         .rainbow-anim {
             animation: rainbow-hue 3s linear infinite;
+        }
+
+        @keyframes rgb-border-anim {
+            0%   { border-color: hsl(0, 100%, 50%); box-shadow: inset 0 0 15px hsla(0, 100%, 50%, 0.3), 0 0 15px hsla(0, 100%, 50%, 0.6); }
+            20%  { border-color: hsl(72, 100%, 50%); box-shadow: inset 0 0 15px hsla(72, 100%, 50%, 0.3), 0 0 15px hsla(72, 100%, 50%, 0.6); }
+            40%  { border-color: hsl(144, 100%, 50%); box-shadow: inset 0 0 15px hsla(144, 100%, 50%, 0.3), 0 0 15px hsla(144, 100%, 50%, 0.6); }
+            60%  { border-color: hsl(216, 100%, 50%); box-shadow: inset 0 0 15px hsla(216, 100%, 50%, 0.3), 0 0 15px hsla(216, 100%, 50%, 0.6); }
+            80%  { border-color: hsl(288, 100%, 50%); box-shadow: inset 0 0 15px hsla(288, 100%, 50%, 0.3), 0 0 15px hsla(288, 100%, 50%, 0.6); }
+            100% { border-color: hsl(360, 100%, 50%); box-shadow: inset 0 0 15px hsla(360, 100%, 50%, 0.3), 0 0 15px hsla(360, 100%, 50%, 0.6); }
+        }
+        .toy-slot.rgb-border-active {
+            animation: rgb-border-anim 3s linear infinite !important;
+        }
+        .toy-slot.rgb-border-active:hover {
+            animation: rgb-border-anim 3s linear infinite, pulse 1.2s infinite !important;
         }
 
         @media (orientation: landscape) {
@@ -451,6 +489,9 @@
         }
 
         @media (orientation: landscape) and (max-height: 450px) {
+            #start-menu::before, #start-menu::after, .overlay::before, .overlay::after {
+                display: none;
+            }
             #start-menu { 
                 flex-direction: row; 
                 justify-content: space-evenly; 
@@ -520,7 +561,7 @@
             </button>
 
             <button onclick="showToyboxMenu()" class="diff-btn" style="background: #2d1b2e; border: 2px solid #ff69b4; margin-top: 15px;">
-                The Toybox 🪀
+                The Toy Box 🪀
             </button>
         </div>
     </div>
@@ -535,7 +576,8 @@
 
     <div id="gallery-menu" class="overlay" style="z-index: 250 !important;">
         <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">PLUSHIE GALLERY 🧸</h1>
-        <div style="font-size: 15px; color: var(--pink); margin-bottom: 15px;">Collect them all across every quest!</div>
+        <div style="font-size: 15px; color: var(--pink); margin-bottom: 5px;">Click an unlocked Plushie Pal to equip them!</div>
+        <div style="font-size: 13px; color: #aaa; margin-bottom: 20px; max-width: 400px; line-height: 1.4;">Equipped pals join you on your quest and grant passive sleepy buffs.</div>
         <div id="gallery-grid"></div>
         <div class="overlay-btns">
             <button onclick="hideGalleryMenu()" style="background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink);">CLOSE GALLERY</button>
@@ -543,11 +585,11 @@
     </div>
 
     <div id="toybox-menu" class="overlay" style="z-index: 250 !important;">
-        <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">THE TOYBOX 🪀</h1>
+        <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">THE TOY BOX 🪀</h1>
         <div style="font-size: 15px; color: var(--pink); margin-bottom: 15px;">Your arsenal of sleepiness!</div>
         <div id="toybox-grid"></div>
         <div class="overlay-btns">
-            <button onclick="hideToyboxMenu()" style="background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink);">CLOSE TOYBOX</button>
+            <button onclick="hideToyboxMenu()" style="background: var(--hot-pink); box-shadow: 0 0 20px var(--hot-pink);">CLOSE TOY BOX</button>
         </div>
     </div>
 
@@ -561,6 +603,7 @@
         
         <div id="face-hud">
             <img id="player-face" src="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png" alt="Status">
+            <div id="pal-hud"></div>
         </div>
 
         <div id="boss-hud">
@@ -645,6 +688,7 @@ const domHiDisplay = document.getElementById('hi-display');
 const domMultDisplay = document.getElementById('mult-display');
 const domComboFill = document.getElementById('combo-fill');
 const domPlayerFace = document.getElementById('player-face');
+const domPalHud = document.getElementById('pal-hud');
 const domBossHud = document.getElementById('boss-hud');
 const domBossBarFill = document.getElementById('boss-bar-fill');
 const domVignette = document.getElementById('vignette');
@@ -663,6 +707,10 @@ canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80
 let displayList = [];                      
 let lastHP = -1, lastScoreText = '', lastHi = -1, lastMultText = '', lastCombo = -1;
 let lastFaceUrl = '', lastIsDodging = false, lastVignetteOpacity = -1, lastDodgeReady = true;
+
+// Plushie Pals State
+let equippedPalId = localStorage.getItem('equippedPalId') !== null ? parseInt(localStorage.getItem('equippedPalId')) : -1;
+let palRegenTimer = 0;
 
 // Skin Tracking Variables
 let rainbowWandEnabled = localStorage.getItem('rainbowWandEnabled') === 'true';
@@ -764,33 +812,52 @@ function hideScoresMenu() { document.getElementById('scores-menu').style.display
 // PLUSHIE GALLERY SYSTEM
 // ========================
 const PLUSHIES = [
-    {id:0,emoji:"🧸",name:"Sir Fluffington",desc:"Forest founder"},
-    {id:1,emoji:"🐻",name:"Berry Bear",desc:"Honey hoarder"},
-    {id:2,emoji:"🐼",name:"Pandy",desc:"Bamboo dreamer"},
-    {id:3,emoji:"🐨",name:"Koala Kiki",desc:"Eucalyptus expert"},
-    {id:4,emoji:"🦒",name:"Giraffic",desc:"Tall tales teller"},
-    {id:5,emoji:"🐘",name:"Ellie",desc:"Trunk tickler"},
-    {id:6,emoji:"🐰",name:"Bouncy",desc:"Carrot collector"},
-    {id:7,emoji:"🦄",name:"Sparkle Hoof",desc:"Rainbow rider"},
-    {id:8,emoji:"🐱",name:"Mittens",desc:"Purrfect pillow"},
-    {id:9,emoji:"🐶",name:"Woofles",desc:"Bone booper"},
-    {id:10,emoji:"🦁",name:"Leo the Brave",desc:"Mane of courage"},
-    {id:11,emoji:"🐯",name:"Tiggy",desc:"Stripey superstar"}
+    {id:0,emoji:"🧸",name:"Sir Fluffington",desc:"Regens 1 HP every 10s"},
+    {id:1,emoji:"🐻",name:"Berry Bear",desc:"Takes 1 less damage from hits (Min 1)"},
+    {id:2,emoji:"🐼",name:"Pandy",desc:"+20% Score from boops"},
+    {id:3,emoji:"🐨",name:"Koala Kiki",desc:"Enemies move 15% slower"},
+    {id:4,emoji:"🦒",name:"Giraffic",desc:"+25% Weapon Range"},
+    {id:5,emoji:"🐘",name:"Ellie",desc:"+20% Weapon Spread/AoE"},
+    {id:6,emoji:"🐰",name:"Bouncy",desc:"50% faster Dodge cooldown"},
+    {id:7,emoji:"🦄",name:"Sparkle Hoof",desc:"+15% Move & Dodge Speed"},
+    {id:8,emoji:"🐱",name:"Mittens",desc:"Cupcakes heal double (+10 HP)"},
+    {id:9,emoji:"🐶",name:"Woofles",desc:"Huge pickup range & spots foes on map"},
+    {id:10,emoji:"🦁",name:"Leo the Brave",desc:"+1 Weapon Damage"},
+    {id:11,emoji:"🐯",name:"Tiggy",desc:"Combo meter drains 50% slower"}
 ];
 
 function showGalleryMenu() {
     const grid = document.getElementById('gallery-grid');
     grid.innerHTML = '';
     let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
+    
     PLUSHIES.forEach(p => {
         const isCollected = collection.includes(p.id);
+        const isEquipped = equippedPalId === p.id;
         const slot = document.createElement('div');
+        
         slot.className = `plushie-slot ${isCollected ? 'collected' : ''}`;
+        if (isEquipped) {
+            slot.style.borderColor = 'var(--hot-pink)';
+            slot.style.boxShadow = 'inset 0 0 15px rgba(255, 20, 147, 0.4)';
+        }
+
         slot.innerHTML = `
             <div style="font-size:42px;margin-bottom:6px;filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};">${p.emoji}</div>
             <div style="font-size:14px;font-weight:bold;color:white;">${p.name}</div>
-            <div style="font-size:11px;color:${isCollected?'var(--pink)':'#777'};margin-top:2px;">${isCollected?p.desc:'??? Locked ???'}</div>
+            <div style="font-size:11px;color:${isCollected?'var(--pink)':'#777'};margin-top:4px;">${isCollected?p.desc:'??? Locked ???'}</div>
+            ${isCollected ? `<div style="margin-top:8px; font-size:11px; color: ${isEquipped ? 'var(--hot-pink)' : 'var(--sky)'}; font-weight:bold;">${isEquipped ? '★ EQUIPPED ★' : 'CLICK TO EQUIP'}</div>` : ''}
         `;
+        
+        if (isCollected) {
+            slot.style.cursor = 'pointer';
+            slot.onclick = () => {
+                equippedPalId = isEquipped ? -1 : p.id; 
+                localStorage.setItem('equippedPalId', equippedPalId);
+                showGalleryMenu(); 
+                playSound('sine', 800, 50, 0.1); 
+            };
+        }
         grid.appendChild(slot);
     });
     document.getElementById('gallery-menu').style.display = 'flex';
@@ -810,18 +877,17 @@ const TOY_DESCRIPTIONS = {
 
 function createRainbowSlot(emoji, title, desc, isEnabled, toggleFuncName) {
     const slot = document.createElement('div');
-    slot.className = `toy-slot unlocked`;
-    slot.style.borderColor = 'var(--sky)';
-    slot.style.boxShadow = 'inset 0 0 20px rgba(79, 195, 247, 0.4)';
+    // Using default 'unlocked' for standard hot-pink border, 'rgb-border-active' when toggled ON
+    slot.className = `toy-slot unlocked ${isEnabled ? 'rgb-border-active' : ''}`;
     
     slot.innerHTML = `
         <div class="rainbow-anim" style="font-size:48px; margin-bottom:10px;">
             ${emoji}
         </div>
-        <div style="font-size:16px; font-weight:bold; color:white; text-shadow: 0 0 10px var(--sky);">
+        <div style="font-size:16px; font-weight:bold; color:white; text-shadow: 0 0 10px var(--hot-pink);">
             ${title}
         </div>
-        <div style="font-size:12px; color:var(--sky); margin-top:4px; margin-bottom:12px;">
+        <div style="font-size:12px; color:var(--pink); margin-top:4px; margin-bottom:12px;">
             ${desc}
         </div>
         <button onclick="${toggleFuncName}(event)" style="padding: 6px 12px; background: ${isEnabled ? 'var(--hot-pink)' : 'transparent'}; border: 2px solid ${isEnabled ? '#fff' : '#888'}; border-radius: 12px; color: ${isEnabled ? 'white' : '#888'}; font-weight: bold; cursor: pointer; font-size: 12px; transition: all 0.2s;">
@@ -894,34 +960,12 @@ function showToyboxMenu() {
     document.getElementById('toybox-menu').style.display = 'flex';
 }
 
-function toggleRainbowWand(e) {
-    e.stopPropagation();
-    rainbowWandEnabled = !rainbowWandEnabled;
-    localStorage.setItem('rainbowWandEnabled', rainbowWandEnabled);
-    showToyboxMenu(); 
-}
-function toggleRainbowMilk(e) {
-    e.stopPropagation();
-    rainbowMilkEnabled = !rainbowMilkEnabled;
-    localStorage.setItem('rainbowMilkEnabled', rainbowMilkEnabled);
-    showToyboxMenu(); 
-}
-function toggleRainbowBox(e) {
-    e.stopPropagation();
-    rainbowBoxEnabled = !rainbowBoxEnabled;
-    localStorage.setItem('rainbowBoxEnabled', rainbowBoxEnabled);
-    showToyboxMenu(); 
-}
-function toggleRainbowPillow(e) {
-    e.stopPropagation();
-    rainbowPillowEnabled = !rainbowPillowEnabled;
-    localStorage.setItem('rainbowPillowEnabled', rainbowPillowEnabled);
-    showToyboxMenu(); 
-}
+function toggleRainbowWand(e) { e.stopPropagation(); rainbowWandEnabled = !rainbowWandEnabled; localStorage.setItem('rainbowWandEnabled', rainbowWandEnabled); showToyboxMenu(); }
+function toggleRainbowMilk(e) { e.stopPropagation(); rainbowMilkEnabled = !rainbowMilkEnabled; localStorage.setItem('rainbowMilkEnabled', rainbowMilkEnabled); showToyboxMenu(); }
+function toggleRainbowBox(e) { e.stopPropagation(); rainbowBoxEnabled = !rainbowBoxEnabled; localStorage.setItem('rainbowBoxEnabled', rainbowBoxEnabled); showToyboxMenu(); }
+function toggleRainbowPillow(e) { e.stopPropagation(); rainbowPillowEnabled = !rainbowPillowEnabled; localStorage.setItem('rainbowPillowEnabled', rainbowPillowEnabled); showToyboxMenu(); }
 
-function hideToyboxMenu() { 
-    document.getElementById('toybox-menu').style.display = 'none'; 
-}
+function hideToyboxMenu() { document.getElementById('toybox-menu').style.display = 'none'; }
 
 const assets = {
     bearIdle: new Image(), bearAtk: new Image(),
@@ -1012,6 +1056,10 @@ const viewportEl = document.getElementById('viewport');
 const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 2) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const orientationMedia = window.matchMedia("(orientation: landscape)");
 
+function getSpeedMult() {
+    return equippedPalId === 7 ? 1.15 : 1.0;
+}
+
 function handleOrientationChange(e) {
     if (e.matches && isMobileDevice && gameActive && !paused) {
         const doc = window.document;
@@ -1075,6 +1123,7 @@ function initGame() {
     toyAmmo = { "🪄": Infinity, "🍼": 0, "🛏️": 0, "🎵": 0 };
     weaponUsage = { "🪄": 0, "🍼": 0, "🛏️": 0, "🎵": 0 };
     totalBoops = 0; highestCombo = 0; totalPlushiesSaved = 0;
+    palRegenTimer = 0;
     lastDamageTime = Date.now();
     isDodging = false; dodgeTime = 0; lastDodgeTime = 0; dodgeDx = 0; dodgeDy = 0;
     document.getElementById('overlay').style.display = 'none';
@@ -1174,15 +1223,19 @@ function swapWeapon(index) {
 }
 
 function doDodge() {
-    if (!gameActive || isLoading || paused || isDodging || Date.now() - lastDodgeTime < 1000) return;
+    let dodgeCooldown = equippedPalId === 6 ? 500 : 1000;
+    if (!gameActive || isLoading || paused || isDodging || Date.now() - lastDodgeTime < dodgeCooldown) return;
     lastDodgeTime = Date.now();
     isDodging = true; dodgeTime = 12;
     playSound('sine', 300, 150, 0.2, -200);
     let moveDir = player.dir;
     let isPullingBack = keys['KeyS'] || keys['ArrowDown'] || (currentGp && currentGp.axes.length > 1 && currentGp.axes[1] > 0.2);
     if (isPullingBack || joyForward < -0.1) moveDir += Math.PI;
-    dodgeDx = Math.cos(moveDir) * 0.22;
-    dodgeDy = Math.sin(moveDir) * 0.22;
+    
+    let sm = getSpeedMult();
+    dodgeDx = Math.cos(moveDir) * 0.22 * sm;
+    dodgeDy = Math.sin(moveDir) * 0.22 * sm;
+    
     for(let i=0; i<8; i++) {
         let ang = moveDir + Math.PI + (Math.random()-0.5);
         emitParticle(player.x, player.y, Math.cos(ang)*0.1, Math.sin(ang)*0.1, 0.8, "💨", 0.5);
@@ -1237,7 +1290,7 @@ function updateJoystick(e) {
 setupJoystick();
 
 viewportEl.addEventListener('pointerdown', e => {
-    if (paused || e.target.closest('#bottom-controls-overlay') || e.target.closest('#top-hud-overlay') || e.target.closest('.util-btn') || e.target.id === 'm-canvas' || e.target.id === 'player-face') return;
+    if (paused || e.target.closest('#bottom-controls-overlay') || e.target.closest('#top-hud-overlay') || e.target.closest('.util-btn') || e.target.id === 'm-canvas' || e.target.id === 'player-face' || e.target.id === 'pal-hud') return;
     if (turnPointerId !== null) return;
     turnPointerId = e.pointerId; turnActive = true; lastTurnClientX = e.clientX;
 });
@@ -1289,14 +1342,18 @@ function doBoop() {
         }
     }
 
+    let effectiveRange = toy.range * (equippedPalId === 4 ? 1.25 : 1.0); // Giraffic range buff
+    let effectiveSpread = toy.spread * (equippedPalId === 5 ? 1.2 : 1.0); // Ellie spread buff
+    let extraDamage = equippedPalId === 10 ? 1 : 0; // Leo damage buff
+
     sprites.forEach(s => {
         if (!s.alive || s.pickup) return;
         let d = Math.hypot(s.x - player.x, s.y - player.y);
-        if (d >= toy.range || d < 0.01) return;
+        if (d >= effectiveRange || d < 0.01) return;
         let angToEnemy = Math.atan2(s.y - player.y, s.x - player.x);
         let angleDiff = Math.abs(angToEnemy - player.dir);
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        if (!toy.isAoE && angleDiff >= toy.spread) return;
+        if (!toy.isAoE && angleDiff >= effectiveSpread) return;
 
         let dirX = (s.x - player.x) / d, dirY = (s.y - player.y) / d;
         const map = MAPS[levelIdx].m;
@@ -1317,7 +1374,7 @@ function doBoop() {
         }
         if (wallDist < d - 0.4) return;
 
-        s.hp -= toy.dmg;
+        s.hp -= (toy.dmg + extraDamage);
         hitFlash = 1.0;
         playSound('triangle', 520, 95, 0.19);
         player.combo = Math.min(100, player.combo + 28);
@@ -1325,7 +1382,11 @@ function doBoop() {
         if (s.hp <= 0) {
             s.alive = false;
             playSound('sine', 340, 380, 0.26, -240);
-            player.score += (s.type === 'boss' ? 2000 : 220) * player.mult;
+            
+            // Pandy score multiplier buff
+            let scoreBoost = equippedPalId === 2 ? 1.2 : 1.0;
+            player.score += (s.type === 'boss' ? 2000 : 220) * player.mult * scoreBoost;
+            
             totalBoops++; totalPlushiesSaved++;
             spawnParticles(s.x, s.y, "☁️", 14);
             if (!s.type) {
@@ -1429,6 +1490,28 @@ document.getElementById('retry-btn').onclick = returnToMenu;
 function update(dt = 1) {
     if (!gameActive || isLoading || paused) return;
 
+    // --- PLUSHIE PAL BUFFS (HP REGEN) ---
+    if (equippedPalId === 0) { // Sir Fluffington
+        palRegenTimer += dt * 16.66;
+        if (palRegenTimer > 10000 && player.hp > 0 && player.hp < 15) {
+            player.hp++;
+            palRegenTimer = 0;
+            spawnParticles(player.x, player.y, "❤️", 3);
+        }
+    }
+
+    // --- HUD UPDATE FOR PALS ---
+    if (equippedPalId !== -1) {
+        const pal = PLUSHIES.find(p => p.id === equippedPalId);
+        if (pal && domPalHud.textContent !== pal.emoji) {
+            domPalHud.textContent = pal.emoji;
+            domPalHud.style.transform = "scale(1.3)";
+            setTimeout(() => domPalHud.style.transform = "scale(1)", 200);
+        }
+    } else {
+        domPalHud.textContent = '';
+    }
+
     const gp = currentGp;
     let gpMoveY = 0, gpMoveX = 0, gpTurnX = 0, gpSprint = false;
     if (gp) {
@@ -1465,7 +1548,8 @@ function update(dt = 1) {
     let untouchedSecs = (Date.now() - lastDamageTime) / 1000;
     if (untouchedSecs > 5 && player.hp > 0 && !levelTransitioning) player.score += untouchedSecs * 0.05;
 
-    let dodgeReady = (Date.now() - lastDodgeTime >= 1000);
+    let dodgeCooldown = equippedPalId === 6 ? 500 : 1000;
+    let dodgeReady = (Date.now() - lastDodgeTime >= dodgeCooldown);
     if (dodgeReady !== lastDodgeReady) {
         domDodgeBtn.style.opacity = dodgeReady ? 1 : 0.4;
         domDodgeBtn.style.filter = dodgeReady ? "none" : "grayscale(100%)";
@@ -1482,6 +1566,7 @@ function update(dt = 1) {
     if (gpTurnX !== 0) player.dir += gpTurnX * 0.085;
 
     isMoving = false;
+    let sm = getSpeedMult();
 
     if (dodgeTime > 0) {
         dodgeTime -= dt;
@@ -1493,7 +1578,10 @@ function update(dt = 1) {
         let isSprinting = keys['ShiftLeft'] || gpSprint;
         let joyDist = joyActive ? Math.hypot(currentJoyX, currentJoyY) / JOY_RADIUS : 0;
         if (joyDist > 0.68 || Math.abs(gpMoveY) > 0.68 || Math.abs(gpMoveX) > 0.68) isSprinting = true;
-        let moveSpeed = (isSprinting ? 0.095 : 0.045) * dt;
+        
+        // PLUSHIE PAL BUFF (SPEED)
+        let moveSpeed = (isSprinting ? 0.095 : 0.045) * dt * sm;
+        
         let dx = Math.cos(player.dir) * moveSpeed;
         let dy = Math.sin(player.dir) * moveSpeed;
         if (moveUp) {
@@ -1540,7 +1628,10 @@ function update(dt = 1) {
         lastVignetteOpacity = newOpacity;
     }
 
-    player.combo = Math.max(0, player.combo - 0.12 * dt);
+    // Tiggy Combo Drain Buff
+    let comboDrainRate = equippedPalId === 11 ? 0.06 : 0.12;
+    player.combo = Math.max(0, player.combo - comboDrainRate * dt);
+    
     player.mult = Math.floor(player.combo / 20) + 1;
     if (player.mult > maxMultSeen) maxMultSeen = player.mult;
     if (player.combo > highestCombo) highestCombo = player.combo;
@@ -1573,15 +1664,22 @@ function update(dt = 1) {
         domBossBarFill.style.width = (activeBoss.hp / activeBoss.maxHp * 100) + "%";
     } else domBossHud.style.display = 'none';
 
+    // PLUSHIE PAL BUFF (PICKUP RADIUS)
+    let currentPickupRadius = (equippedPalId === 9) ? 1.4 : 0.6;
+
     sprites.forEach(s => {
         if (!s.alive) return;
         if (s.atkTimer > 0) s.atkTimer -= 16 * dt;
         let d = Math.hypot(s.x - player.x, s.y - player.y);
 
-        if (s.pickup && d < 0.6) {
+        if (s.pickup && d < currentPickupRadius) {
             s.alive = false;
             playSound('sine', 1180, 55, 0.27);
-            if (s.e === "🧁") player.hp = Math.min(45, player.hp + 5);
+            if (s.e === "🧁") {
+                // Mittens heal buff
+                let healAmount = equippedPalId === 8 ? 10 : 5;
+                player.hp = Math.min(45, player.hp + healAmount);
+            }
             else if (s.e === "📦") {
                 toyAmmo["🍼"] += 20; toyAmmo["🛏️"] += 5; toyAmmo["🎵"] += 1;
                 hitFlash = 0.5; playSound('sine', 1400, 100, 0.2);
@@ -1638,7 +1736,10 @@ function update(dt = 1) {
             }
         } else if (!s.pickup) {
             if (d < 12 && d > 0.5) {
-                let enemySpeed = 0.012 * (difficultyMult === 1.0 ? 0.8 : (difficultyMult === 1.5 ? 1.0 : 1.3)) * dt;
+                // Koala Kiki slow buff
+                let enemySpeedMult = equippedPalId === 3 ? 0.85 : 1.0;
+                let enemySpeed = 0.012 * (difficultyMult === 1.0 ? 0.8 : (difficultyMult === 1.5 ? 1.0 : 1.3)) * dt * enemySpeedMult;
+                
                 let dirX = (player.x - s.x) / d, dirY = (player.y - s.y) / d;
                 let sepX = 0, sepY = 0;
                 sprites.forEach(other => {
@@ -1670,7 +1771,10 @@ function update(dt = 1) {
             if (Math.hypot(p.x - player.x, p.y - player.y) < 0.45) {
                 if (isDodging) { spawnParticles(p.x, p.y, "💨", 3); removed = true; }
                 else {
-                    const damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
+                    let damage = difficultyMult === 1.0 ? 1 : (difficultyMult === 1.5 ? 2 : 3);
+                    // Berry Bear Damage Reduction Buff
+                    if (equippedPalId === 1) damage = Math.max(1, damage - 1);
+                    
                     player.hp -= damage; player.combo = 0; shake = 1.1; lastDamageTime = Date.now();
                     playSound('triangle', 410, 135, 0.23, -110);
                     if (player.hp <= 0) showEnd("BOOPED! 🧸");
@@ -1887,6 +1991,46 @@ function draw() {
 
     ctx.fillText(currentToy, 0, 0);
     ctx.restore();
+    
+    // --- DRAW PLUSHIE PAL FAMILIAR ---
+    if (equippedPalId !== -1) {
+        const pal = PLUSHIES.find(p => p.id === equippedPalId);
+        if (pal) {
+            ctx.save();
+            let palFloatY = Math.sin(Date.now() * 0.003) * 8;
+            let palFloatX = Math.cos(Date.now() * 0.002) * 4;
+            let palBob = Math.sin(bob * 0.8) * 8; // Mirrors walking animation
+            
+            let palHop = 0;
+            if (attackAnim > 0) {
+                // Creates a snappy little hop upward when the player boops
+                palHop = Math.sin((1.0 - attackAnim) * Math.PI) * -15; 
+            }
+            
+            // Position on the left side of the screen
+            ctx.translate(80 + palFloatX, 230 + palBob + palFloatY + palHop);
+            ctx.rotate(Math.sin(Date.now() * 0.0015) * 0.08); // Slight rocking motion
+            
+            ctx.font = "75px serif";
+            ctx.textAlign = "center";
+            
+            if (attackAnim > 0) {
+                // Intense RGB glow and hue shift while booping
+                let hue = Math.floor(Date.now() * 0.8) % 360;
+                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                ctx.shadowBlur = 30 + Math.sin(Date.now() * 0.02) * 10;
+                ctx.filter = `hue-rotate(${hue}deg) drop-shadow(0 0 10px hsl(${hue}, 100%, 50%))`;
+            } else {
+                // Normal soft magical glow
+                ctx.shadowColor = 'rgba(79, 195, 247, 0.7)'; // var(--sky)
+                ctx.shadowBlur = 15 + Math.sin(Date.now() * 0.005) * 5;
+                ctx.filter = 'none';
+            }
+            
+            ctx.fillText(pal.emoji, 0, 0);
+            ctx.restore();
+        }
+    }
 
     ctx.save();
     if (currentToy !== "🪄") {
@@ -1922,7 +2066,11 @@ function drawMinimap() {
                 mCtx.fillText("🎁", s.x * cw, s.y * ch + 1);
                 mCtx.restore();
             } else {
-                mCtx.fillStyle = s.pickup ? "#00ffff" : "#ff3366";
+                // PLUSHIE PAL BUFF (MINIMAP HIGHLIGHT)
+                let color = s.pickup ? "#00ffff" : "#ff3366";
+                if (!s.pickup && equippedPalId === 9) color = "#ff9900"; // Woofles highlights enemies!
+
+                mCtx.fillStyle = color;
                 mCtx.beginPath();
                 mCtx.arc(s.x * cw, s.y * ch, 2.5, 0, Math.PI * 2);
                 mCtx.fill();
