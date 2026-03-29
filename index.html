@@ -9,8 +9,8 @@
     <title>SFWFPS: Plushie Quest Pro</title>
     <meta name="description" content="Enter the forest and start your Plushie Quest in this optimized retro raycasting adventure!">
     
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png">
 
     <style>
         :root { 
@@ -48,7 +48,7 @@
             inset: 0; 
             background-color: #1a1a1a;
             background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
-                              url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=2');
+                              url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=iosfix3');
             background-size: cover;
             background-position: center;
             z-index: 10000; 
@@ -535,7 +535,7 @@
         .rainbow-anim {
             -webkit-animation: rainbow-hue 3s linear infinite;
             animation: rainbow-hue 3s linear infinite;
-            -webkit-transform: translateZ(0); /* Hardware Acceleration for iOS */
+            -webkit-transform: translateZ(0);
             transform: translateZ(0);
             will-change: filter, -webkit-filter;
         }
@@ -559,7 +559,7 @@
         .toy-slot.rgb-border-active {
             -webkit-animation: rgb-border-anim 3s linear infinite !important;
             animation: rgb-border-anim 3s linear infinite !important;
-            -webkit-transform: translateZ(0); /* Hardware Acceleration for iOS */
+            -webkit-transform: translateZ(0);
             transform: translateZ(0);
         }
         .toy-slot.rgb-border-active:hover {
@@ -620,9 +620,9 @@
 <script>
     // PRELOAD START MENU BACKGROUNDS TO FIX IOS SAFARI CACHING BUG
     const preloadImg1 = new Image();
-    preloadImg1.src = "https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=2";
+    preloadImg1.src = "https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=iosfix3";
     const preloadImg2 = new Image();
-    preloadImg2.src = "https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg?v=2";
+    preloadImg2.src = "https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg?v=iosfix3";
 </script>
 
     <div id="start-menu">
@@ -726,7 +726,7 @@
         <div id="minimap-container"><canvas id="m-canvas"></canvas></div>
         
         <div id="face-hud">
-            <img id="player-face" src="https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png" alt="Status">
+            <img id="player-face" src="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png" alt="Status">
             <div id="pal-hud"></div>
         </div>
 
@@ -808,9 +808,9 @@ function updateStartMenuBackground() {
     let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
     let startMenu = document.getElementById('start-menu');
     if (collection.includes(12)) {
-        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg?v=2')";
+        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/1000-startmenu.jpg?v=iosfix3')";
     } else {
-        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=2')";
+        startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg?v=iosfix3')";
     }
     startMenu.style.backgroundSize = "cover";
     startMenu.style.backgroundPosition = "center";
@@ -1266,27 +1266,32 @@ const assets = {
     arvenPlush: new Image()
 };
 
-// Configure crossOrigin BEFORE setting src so we can securely read the floor pixels!
-assets.floorTex.crossOrigin = "Anonymous";
+// FIX FOR IOS SAFARI: Apply crossOrigin anonymous to ALL images before setting src
+Object.values(assets).forEach(asset => {
+    if (asset instanceof Image) {
+        asset.crossOrigin = "Anonymous";
+    }
+});
 
-assets.bearIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-4-1.png';
-assets.bearAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-6-1.png';
-assets.smallIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-10.png';
-assets.smallAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-18.png';
-assets.predIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-8.png';
-assets.predAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-9.png';
-assets.elephantIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0.png';
-assets.elephantAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/imag69.png';
-assets.bossIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image70.png';
-assets.bossAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image71.png';
-assets.bossPhase2.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-14.png';
-assets.wall1.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/wall2.jpg';
-assets.wall2.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/wall%20area%201.png';
-assets.wall3.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/wall3.jpg';
-assets.portal.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image%20(1).jpg';
-// Appended cache-buster to prevent Safari CORS caching bugs
-assets.floorTex.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/floor1.jpg?v=1';
-assets.arvenPlush.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/arvenplush.png';
+const cb = "?v=iosfix3"; // Global cache buster for iOS to prevent silent CORS drops
+
+assets.bearIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-4-1.png' + cb;
+assets.bearAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-6-1.png' + cb;
+assets.smallIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-10.png' + cb;
+assets.smallAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-18.png' + cb;
+assets.predIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-8.png' + cb;
+assets.predAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-9.png' + cb;
+assets.elephantIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0.png' + cb;
+assets.elephantAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/imag69.png' + cb;
+assets.bossIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image70.png' + cb;
+assets.bossAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image71.png' + cb;
+assets.bossPhase2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-14.png' + cb;
+assets.wall1.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall2.jpg' + cb;
+assets.wall2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall%20area%201.png' + cb;
+assets.wall3.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall3.jpg' + cb;
+assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image%20(1).jpg' + cb;
+assets.floorTex.src = 'https://raw.githubusercontent.com/sfwdoom/PLUSHIEQUEST/refs/heads/photos/floor1.jpg' + cb;
+assets.arvenPlush.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/arvenplush.png' + cb;
 
 let floorPixels = null;
 let floorWidth = 64, floorHeight = 64;
@@ -1633,6 +1638,8 @@ function doBoop() {
 
     let pEmojisRainbow = ["❤️", "🧡", "💛", "💚", "💙", "💜"];
 
+    let cbString = cb; // just so we remember we are using ?v=iosfix3 on DOM images, not emojis
+
     if (currentToy === "🎵") {
         let notes = (rainbowBoxEnabled) ? pEmojisRainbow : ["🎶"];
         for(let i=0; i<24; i++) { 
@@ -1877,7 +1884,8 @@ function update(dt = 1) {
         if (pal && (domPalHud.getAttribute('data-id') !== pal.id.toString())) {
             domPalHud.setAttribute('data-id', pal.id);
             if (pal.isImage) {
-                domPalHud.innerHTML = `<img src="${pal.url}" style="width:80%;height:80%;object-fit:contain;border-radius:6px;filter:drop-shadow(0 0 8px var(--sky));">`;
+                let imgUrl = pal.url + cb;
+                domPalHud.innerHTML = `<img src="${imgUrl}" style="width:80%;height:80%;object-fit:contain;border-radius:6px;filter:drop-shadow(0 0 8px var(--sky));">`;
             } else {
                 domPalHud.innerHTML = pal.emoji;
             }
@@ -2051,10 +2059,10 @@ function update(dt = 1) {
     if (Math.abs(player.combo - lastCombo) > 0.4) { domComboFill.style.width = player.combo + "%"; lastCombo = player.combo; }
 
     const hpPct = (player.hp / 15) * 100;
-    let faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png';
-    if (hpPct <= 50) faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/50percenthealth.png';
-    else if (turnRight || joyTurn > 0.1 || gpTurnX > 0.1) faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/lookright.png';
-    else if (turnLeft || joyTurn < -0.1 || gpTurnX < -0.1) faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/lookleft.png';
+    let faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png' + cb;
+    if (hpPct <= 50) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/50percenthealth.png' + cb;
+    else if (turnRight || joyTurn > 0.1 || gpTurnX > 0.1) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookright.png' + cb;
+    else if (turnLeft || joyTurn < -0.1 || gpTurnX < -0.1) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookleft.png' + cb;
     if (faceUrl !== lastFaceUrl) { domPlayerFace.src = faceUrl; lastFaceUrl = faceUrl; }
 
     const activeBoss = sprites.find(s => s.type === 'boss' && s.alive);
