@@ -767,7 +767,6 @@ function enterFullscreen() {
 }
 
 // --- PROCEDURAL PARALLAX SKYBOX ---
-// Dynamically generate a starry sky canvas to use as our texture without external image dependencies
 const skyCanvas = document.createElement('canvas');
 skyCanvas.width = 800; 
 skyCanvas.height = 200;
@@ -776,7 +775,7 @@ skyCtx.fillStyle = '#0a0825';
 skyCtx.fillRect(0, 0, 800, 200);
 
 for(let i=0; i<150; i++) {
-    skyCtx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#ffc0cb'; // White and subtle pink stars
+    skyCtx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#ffc0cb';
     skyCtx.globalAlpha = Math.random() * 0.8 + 0.2;
     skyCtx.fillRect(Math.floor(Math.random() * 800), Math.floor(Math.random() * 200), 2, 2);
 }
@@ -849,6 +848,13 @@ let rainbowPillowUnlocked = localStorage.getItem('rainbowPillowUnlocked') === 't
 let rainbowMilkEnabled = localStorage.getItem('rainbowMilkEnabled') === 'true';
 let rainbowBoxEnabled = localStorage.getItem('rainbowBoxEnabled') === 'true';
 let rainbowPillowEnabled = localStorage.getItem('rainbowPillowEnabled') === 'true';
+
+// TRUE FLOORCASTING BUFFERS
+const offFloorCanvas = document.createElement('canvas');
+offFloorCanvas.width = 400;
+offFloorCanvas.height = 150;
+const offFloorCtx = offFloorCanvas.getContext('2d');
+const floorImgData = offFloorCtx.createImageData(400, 150);
 
 let miniBgCanvas = document.createElement('canvas');
 miniBgCanvas.width = 80; miniBgCanvas.height = 80;
@@ -1118,8 +1124,12 @@ const assets = {
     bossIdle: new Image(), bossAtk: new Image(), bossPhase2: new Image(),
     wall1: new Image(), wall2: new Image(), wall3: new Image(),
     portal: new Image(),
-    skybox: skyCanvas // Use the generated starry sky immediately!
+    skybox: skyCanvas, 
+    floorTex: new Image()
 };
+
+// Configure crossOrigin BEFORE setting src so we can securely read the floor pixels!
+assets.floorTex.crossOrigin = "Anonymous";
 
 assets.bearIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-4-1.png';
 assets.bearAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-6-1.png';
@@ -1136,6 +1146,23 @@ assets.wall1.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads
 assets.wall2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall%20area%201.png';
 assets.wall3.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall3.jpg';
 assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image%20(1).jpg';
+assets.floorTex.src = 'https://raw.githubusercontent.com/sfwdoom/PLUSHIEQUEST/refs/heads/photos/floor1.jpg';
+
+let floorPixels = null;
+let floorWidth = 64, floorHeight = 64;
+
+assets.floorTex.onload = () => {
+    const tempCanvas = document.createElement('canvas');
+    floorWidth = tempCanvas.width = assets.floorTex.naturalWidth;
+    floorHeight = tempCanvas.height = assets.floorTex.naturalHeight;
+    const tCtx = tempCanvas.getContext('2d');
+    tCtx.drawImage(assets.floorTex, 0, 0);
+    try {
+        floorPixels = tCtx.getImageData(0, 0, floorWidth, floorHeight).data;
+    } catch (e) {
+        console.error("CORS prevented reading floor pixels. Make sure your server sends the correct headers.");
+    }
+};
 
 const MAPS = [
     { n: "The Fuzzy Forest", tex: assets.wall1, m: [[1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,1,0,1,0,1],[1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1]], start: [1.5,1.5], enemies: [
@@ -1986,17 +2013,58 @@ function draw() {
     ctx.drawImage(assets.skybox, skyOffset, -50, 800, 200);
     ctx.drawImage(assets.skybox, skyOffset + 800, -50, 800, 200);
 
-    // --- DRAW FAUX DEPTH FLOOR ---
-    ctx.fillStyle = '#1a0b1c'; 
-    ctx.fillRect(0, 150, 400, 150);
-    
-    ctx.fillStyle = '#000000';
-    for (let y = 0; y < 150; y += 4) {
-        let darkness = 1 - (y / 150); 
-        ctx.globalAlpha = darkness * darkness * 0.85; 
-        ctx.fillRect(0, 150 + y, 400, 4);
+    // --- TRUE FLOORCASTING ---
+    if (floorPixels) {
+        const cosDir = Math.cos(player.dir);
+        const sinDir = Math.sin(player.dir);
+        const cosDir90 = Math.cos(player.dir + Math.PI/2);
+        const sinDir90 = Math.sin(player.dir + Math.PI/2);
+        const FOV = 0.66;
+        
+        const rayDirX0 = cosDir - cosDir90 * FOV;
+        const rayDirY0 = sinDir - sinDir90 * FOV;
+        const rayDirX1 = cosDir + cosDir90 * FOV;
+        const rayDirY1 = sinDir + sinDir90 * FOV;
+
+        for (let y = 0; y < 150; y++) {
+            let p = y + 1; // +1 to avoid div by zero
+            let rowDistance = 150 / p;
+            
+            let floorStepX = rowDistance * (rayDirX1 - rayDirX0) / 400;
+            let floorStepY = rowDistance * (rayDirY1 - rayDirY0) / 400;
+            
+            let floorX = player.x + rowDistance * rayDirX0;
+            let floorY = player.y + rowDistance * rayDirY0;
+            
+            // Calculate depth shading
+            let shade = y / 150; 
+            shade = Math.min(1.0, Math.max(0.1, shade * 1.5));
+            
+            for (let x = 0; x < 400; x++) {
+                let cellX = Math.floor(floorX * floorWidth) % floorWidth;
+                let cellY = Math.floor(floorY * floorHeight) % floorHeight;
+                if (cellX < 0) cellX += floorWidth;
+                if (cellY < 0) cellY += floorHeight;
+                
+                let texPos = (cellY * floorWidth + cellX) * 4;
+                let bufPos = (y * 400 + x) * 4;
+                
+                floorImgData.data[bufPos] = floorPixels[texPos] * shade;
+                floorImgData.data[bufPos+1] = floorPixels[texPos + 1] * shade;
+                floorImgData.data[bufPos+2] = floorPixels[texPos + 2] * shade;
+                floorImgData.data[bufPos+3] = 255;
+                
+                floorX += floorStepX;
+                floorY += floorStepY;
+            }
+        }
+        offFloorCtx.putImageData(floorImgData, 0, 0);
+        ctx.drawImage(offFloorCanvas, 0, 150);
+    } else {
+        // Fallback if image blocked by CORS or loading
+        ctx.fillStyle = '#1a0b1c'; 
+        ctx.fillRect(0, 150, 400, 150);
     }
-    ctx.globalAlpha = 1.0;
 
     const map = MAPS[levelIdx].m, tex = MAPS[levelIdx].tex;
     const FOV = 0.66;
