@@ -9,8 +9,8 @@
     <title>SFWFPS: Plushie Quest Pro</title>
     <meta name="description" content="Enter the forest and start your Plushie Quest in this optimized retro raycasting adventure!">
     
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png">
 
     <style>
         :root { 
@@ -46,8 +46,9 @@
         #start-menu { 
             position: fixed; 
             inset: 0; 
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
-                        url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg');
+            background-color: #1a1a1a;
+            background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
+                              url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg');
             background-size: cover;
             background-position: center;
             z-index: 10000; 
@@ -694,7 +695,7 @@
         <div id="minimap-container"><canvas id="m-canvas"></canvas></div>
         
         <div id="face-hud">
-            <img id="player-face" src="https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png" alt="Status">
+            <img id="player-face" src="https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png" alt="Status">
             <div id="pal-hud"></div>
         </div>
 
@@ -780,6 +781,8 @@ function updateStartMenuBackground() {
     } else {
         startMenu.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg')";
     }
+    startMenu.style.backgroundSize = "cover";
+    startMenu.style.backgroundPosition = "center";
 }
 
 // --- PROCEDURAL PARALLAX SKYBOXES (DAWN, DAY, SUNSET, AND NIGHT) ---
@@ -789,7 +792,6 @@ morningSkyCanvas.width = 800;
 morningSkyCanvas.height = 200;
 const morningCtx = morningSkyCanvas.getContext('2d');
 let morningGrad = morningCtx.createLinearGradient(0, 0, 0, 200);
-// Deepening colors for dawn skyline
 morningGrad.addColorStop(0, '#1a237e'); // Deep Indigo at top
 morningGrad.addColorStop(0.5, '#ad1457'); // Crimson/Magenta middle
 morningGrad.addColorStop(1, '#ff9100'); // Vibrant Orange at horizon
@@ -1235,23 +1237,23 @@ const assets = {
 // Configure crossOrigin BEFORE setting src so we can securely read the floor pixels!
 assets.floorTex.crossOrigin = "Anonymous";
 
-assets.bearIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-4-1.png';
-assets.bearAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-6-1.png';
-assets.smallIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-10.png';
-assets.smallAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-18.png';
-assets.predIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-8.png';
-assets.predAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-9.png';
-assets.elephantIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0.png';
-assets.elephantAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/imag69.png';
-assets.bossIdle.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image70.png';
-assets.bossAtk.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image71.png';
-assets.bossPhase2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image0-14.png';
-assets.wall1.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall2.jpg';
-assets.wall2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall%20area%201.png';
-assets.wall3.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall3.jpg';
-assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image%20(1).jpg';
+assets.bearIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-4-1.png';
+assets.bearAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-6-1.png';
+assets.smallIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-10.png';
+assets.smallAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-18.png';
+assets.predIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-8.png';
+assets.predAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-9.png';
+assets.elephantIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0.png';
+assets.elephantAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/imag69.png';
+assets.bossIdle.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image70.png';
+assets.bossAtk.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image71.png';
+assets.bossPhase2.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image0-14.png';
+assets.wall1.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/wall2.jpg';
+assets.wall2.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/wall%20area%201.png';
+assets.wall3.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/wall3.jpg';
+assets.portal.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/image%20(1).jpg';
 // Appended cache-buster to prevent Safari CORS caching bugs
-assets.floorTex.src = 'https://raw.githubusercontent.com/sfwdoom/PLUSHIEQUEST/refs/heads/photos/floor1.jpg?v=1';
+assets.floorTex.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/floor1.jpg?v=1';
 assets.arvenPlush.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/arvenplush.png';
 
 let floorPixels = null;
@@ -1267,7 +1269,13 @@ assets.floorTex.onload = () => {
         floorPixels = tCtx.getImageData(0, 0, floorWidth, floorHeight).data;
     } catch (e) {
         console.error("CORS prevented reading floor pixels. Make sure your server sends the correct headers.");
+        floorPixels = null; // Explicitly null it out so fallback triggers
     }
+};
+
+assets.floorTex.onerror = () => {
+    console.error("Floor texture failed to load.");
+    floorPixels = null;
 };
 
 const MAPS = [
@@ -2011,10 +2019,10 @@ function update(dt = 1) {
     if (Math.abs(player.combo - lastCombo) > 0.4) { domComboFill.style.width = player.combo + "%"; lastCombo = player.combo; }
 
     const hpPct = (player.hp / 15) * 100;
-    let faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/forwardface.png';
-    if (hpPct <= 50) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/50percenthealth.png';
-    else if (turnRight || joyTurn > 0.1 || gpTurnX > 0.1) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookright.png';
-    else if (turnLeft || joyTurn < -0.1 || gpTurnX < -0.1) faceUrl = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/lookleft.png';
+    let faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/forwardface.png';
+    if (hpPct <= 50) faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/50percenthealth.png';
+    else if (turnRight || joyTurn > 0.1 || gpTurnX > 0.1) faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/lookright.png';
+    else if (turnLeft || joyTurn < -0.1 || gpTurnX < -0.1) faceUrl = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/lookleft.png';
     if (faceUrl !== lastFaceUrl) { domPlayerFace.src = faceUrl; lastFaceUrl = faceUrl; }
 
     const activeBoss = sprites.find(s => s.type === 'boss' && s.alive);
@@ -2189,11 +2197,16 @@ function updatePortalTexture() {
 function draw() {
     if (portalActive) updatePortalTexture();
     ctx.save();
+    
+    // Explicitly clear the full canvas so we don't smear sky over unloaded floors
+    ctx.fillStyle = '#0a0a0a'; 
+    ctx.fillRect(0, 0, 400, 300);
+
     let currentBob = Math.sin(bob) * 11;
     ctx.translate(0, currentBob);
     if (shake > 0) ctx.translate((Math.random()-0.5)*22*shake, (Math.random()-0.5)*22*shake);
 
-    // --- DRAW PROCEDURAL PARALLAX SKYBOX ---
+    // --- DRAW PROCEDURAL PARALLAX SKYBOXES ---
     let currentSkybox = assets.daySkybox;
     if (levelIdx === 0) {
         currentSkybox = assets.morningSkybox;
@@ -2209,7 +2222,7 @@ function draw() {
     ctx.drawImage(currentSkybox, skyOffset + 800, -50, 800, 200);
 
     // --- TRUE FLOORCASTING ---
-    if (floorPixels) {
+    if (floorPixels && floorWidth > 0 && floorHeight > 0) {
         const cosDir = Math.cos(player.dir);
         const sinDir = Math.sin(player.dir);
         const cosDir90 = Math.cos(player.dir + Math.PI/2);
@@ -2256,7 +2269,7 @@ function draw() {
         offFloorCtx.putImageData(floorImgData, 0, 0);
         ctx.drawImage(offFloorCanvas, 0, 150);
     } else {
-        // Fallback if image blocked by CORS or loading
+        // Safe fallback for mobile CORS blocking
         ctx.fillStyle = '#1a0b1c'; 
         ctx.fillRect(0, 150, 400, 150);
     }
@@ -2292,23 +2305,23 @@ function draw() {
         let texW = wallTex.naturalWidth || wallTex.width;
         let texH = wallTex.naturalHeight || wallTex.height;
         
-        // --- OPTIMIZED WALL SHADOW RENDERING ---
         if (texW > 0) {
             let texX = Math.floor(wallX * texW);
             
-            // Draw the wall completely opaque to prevent sky/floor bleed
             ctx.globalAlpha = 1.0;
             ctx.drawImage(wallTex, texX, 0, 1, texH, i, 150 - h/2, 1, h);
             
-            // Calculate distance shadow
             let shadowAlpha = Math.min(0.95, (perpWallDist / 12));
-            if (side === 1 && hit !== 9) shadowAlpha = Math.min(0.95, shadowAlpha + 0.3); // Natural shadow on side walls
+            if (side === 1 && hit !== 9) shadowAlpha = Math.min(0.95, shadowAlpha + 0.3); 
             
-            // Layer black over the wall to simulate depth/darkness
             if (shadowAlpha > 0) {
                 ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
                 ctx.fillRect(i, 150 - h/2, 1, h);
             }
+        } else {
+            // Safe fallback if texture breaks on iOS
+            ctx.fillStyle = side === 1 ? '#333' : '#555';
+            ctx.fillRect(i, 150 - h/2, 1, h);
         }
     }
 
@@ -2350,21 +2363,30 @@ function draw() {
         if (s.l !== undefined) ctx.globalAlpha = s.l > 0.2 ? 1 : s.l * 5;
         else ctx.globalAlpha = 1;
 
-        if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
-        else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 150 - sz/2, sz, sz);
-        else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 150 - sz/2, sz, sz);
-        else if (s.e === "🐘") ctx.drawImage(s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        // Image safe-draw helper logic
+        let drawnImage = false;
+        let img = null;
+        
+        if (s.e === "BEAR") img = s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle;
+        else if (s.e === "SMALL") img = s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle;
+        else if (s.e === "PRED") img = s.atkTimer > 0 ? assets.predAtk : assets.predIdle;
+        else if (s.e === "🐘") img = s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle;
         else if (s.e === "BOSS_FINAL") {
-            let bossImg = assets.bossIdle;
-            let sxOffset = 0;
-            if (s.isPhase2) { bossImg = assets.bossPhase2; sxOffset = (Math.random() - 0.5) * 8; }
-            else if (s.atkTimer > 0) bossImg = assets.bossAtk;
-            ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 150 - sz/2, sz, sz);
+            img = assets.bossIdle;
+            if (s.isPhase2) { img = assets.bossPhase2; sx += (Math.random() - 0.5) * 8; }
+            else if (s.atkTimer > 0) img = assets.bossAtk;
         } else if (s.e === "ARVEN_PLUSH") {
-            if (assets.arvenPlush.complete) {
-                ctx.drawImage(assets.arvenPlush, sx - sz/2, 150 - sz/2, sz, sz);
+            img = assets.arvenPlush;
+        }
+
+        if (img) {
+            if (img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, sx - sz/2, 150 - sz/2, sz, sz);
+                drawnImage = true;
             }
-        } else {
+        } 
+        
+        if (!drawnImage) {
             if (!s.isParticle && !s.isProj) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
                 ctx.beginPath();
@@ -2372,21 +2394,20 @@ function draw() {
                 ctx.fill();
             }
 
-            // --- OPTIMIZED PICKUP GLOW (NO shadowBlur) ---
             if (s.pickup) {
                 ctx.globalAlpha = 1.0;
                 sz = Math.round(sz * pickupPulse);
-                
-                // Draw simple transparent circle underneath instead of heavy CPU shadowBlur
                 ctx.fillStyle = s.plushieId !== undefined ? 'rgba(255, 255, 0, 0.4)' : 'rgba(255, 255, 153, 0.3)';
                 ctx.beginPath();
                 ctx.arc(sx, 150 + sz/2 - sz*0.35, sz * 0.45, 0, Math.PI*2);
                 ctx.fill();
             }
 
-            ctx.font = `${sz}px serif`;
-            ctx.textAlign = "center";
-            ctx.fillText(s.e || "✨", sx, 150 + sz/2);
+            if (s.e && !img) {
+                ctx.font = `${sz}px serif`;
+                ctx.textAlign = "center";
+                ctx.fillText(s.e, sx, 150 + sz/2);
+            }
         }
         ctx.globalAlpha = 1;
     });
@@ -2454,25 +2475,22 @@ function draw() {
             if (attackAnim > 0) {
                 let hue = Math.floor(Date.now() * 0.8) % 360;
                 
-                // Draw a colored radial glow behind the emoji
                 ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.4)`;
                 ctx.beginPath();
                 ctx.arc(0, -25, 45, 0, Math.PI*2);
                 ctx.fill();
                 
-                // Still hue-shift the emoji itself
                 ctx.filter = `hue-rotate(${hue}deg)`;
             } else {
                 ctx.filter = 'none';
                 
-                // Standard soft blue glow behind
                 ctx.fillStyle = 'rgba(79, 195, 247, 0.3)';
                 ctx.beginPath();
                 ctx.arc(0, -25, 35, 0, Math.PI*2);
                 ctx.fill();
             }
             
-            if (pal.isImage && assets.arvenPlush.complete) {
+            if (pal.isImage && assets.arvenPlush.complete && assets.arvenPlush.naturalWidth > 0) {
                 ctx.filter = 'none';
                 ctx.drawImage(assets.arvenPlush, -40, -60, 80, 80);
             } else {
@@ -2516,9 +2534,8 @@ function drawMinimap() {
                 mCtx.fillText("🎁", s.x * cw, s.y * ch + 1);
                 mCtx.restore();
             } else {
-                // PLUSHIE PAL BUFF (MINIMAP HIGHLIGHT)
                 let color = s.pickup ? "#00ffff" : "#ff3366";
-                if (!s.pickup && equippedPalId === 9) color = "#ff9900"; // Woofles highlights enemies!
+                if (!s.pickup && equippedPalId === 9) color = "#ff9900";
 
                 mCtx.fillStyle = color;
                 mCtx.beginPath();
