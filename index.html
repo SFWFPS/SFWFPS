@@ -50,7 +50,7 @@
                         url('https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/coverimagev4.jpg');
             background-size: cover;
             background-position: center;
-            z-index: 200; 
+            z-index: 10000; 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
@@ -393,7 +393,7 @@
         .overlay { 
             display: none; position: fixed; inset: 0; 
             background: radial-gradient(circle, rgba(45, 27, 46, 0.97) 0%, rgba(0,0,0,0.99) 100%); 
-            z-index: 100; color: white; flex-direction: column; align-items: center; justify-content: flex-start; 
+            z-index: 10000; color: white; flex-direction: column; align-items: center; justify-content: flex-start; 
             text-align: center; backdrop-filter: blur(12px);
             border: 6px solid var(--hot-pink); box-shadow: inset 0 0 60px rgba(255, 20, 147, 0.4);
             overflow-y: auto;
@@ -631,7 +631,7 @@
         </div>
     </div>
 
-    <div id="name-entry-menu" class="overlay" style="z-index: 300 !important;">
+    <div id="name-entry-menu" class="overlay" style="z-index: 10005 !important;">
         <h1 style="color: #ffcc00; text-shadow: 0 0 15px #ffcc00; font-size: 32px; margin-bottom: 10px;">NEW HIGH SCORE!</h1>
         <p style="color: white; font-size: 20px; margin-bottom: 30px;">Score: <span id="new-high-score-display" style="color: var(--hot-pink); font-weight: bold; text-shadow: 0 0 10px var(--hot-pink);">0</span></p>
         
@@ -658,7 +658,7 @@
         </div>
     </div>
 
-    <div id="scores-menu" class="overlay" style="z-index: 250 !important;">
+    <div id="scores-menu" class="overlay" style="z-index: 10005 !important;">
         <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">TOP 10 SLEEPERS</h1>
         <div id="scores-list"></div>
         <div class="overlay-btns">
@@ -666,7 +666,7 @@
         </div>
     </div>
 
-    <div id="gallery-menu" class="overlay" style="z-index: 250 !important;">
+    <div id="gallery-menu" class="overlay" style="z-index: 10005 !important;">
         <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">PLUSHIE GALLERY 🧸</h1>
         <div style="font-size: 15px; color: var(--pink); margin-bottom: 5px;">Click an unlocked Plushie Pal to equip them!</div>
         <div style="font-size: 13px; color: #aaa; margin-bottom: 20px; max-width: 400px; line-height: 1.4;">Equipped pals join you on your quest and grant passive sleepy buffs.</div>
@@ -676,7 +676,7 @@
         </div>
     </div>
 
-    <div id="toybox-menu" class="overlay" style="z-index: 250 !important;">
+    <div id="toybox-menu" class="overlay" style="z-index: 10005 !important;">
         <h1 style="color: var(--sky); text-shadow: 0 0 15px var(--sky); font-size: 32px;">THE TOY BOX 🪀</h1>
         <div style="font-size: 15px; color: var(--pink); margin-bottom: 15px;">Your arsenal of sleepiness!</div>
         <div id="toybox-grid"></div>
@@ -1159,7 +1159,8 @@ assets.wall1.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads
 assets.wall2.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall%20area%201.png';
 assets.wall3.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/wall3.jpg';
 assets.portal.src = 'https://raw.githubusercontent.com/sfwdoom/SFWDOOM/refs/heads/photos/image%20(1).jpg';
-assets.floorTex.src = 'https://raw.githubusercontent.com/sfwdoom/PLUSHIEQUEST/refs/heads/photos/floor1.jpg';
+// Appended cache-buster to prevent Safari CORS caching bugs
+assets.floorTex.src = 'https://raw.githubusercontent.com/sfwdoom/PLUSHIEQUEST/refs/heads/photos/floor1.jpg?v=1';
 assets.arvenPlush.src = 'https://raw.githubusercontent.com/SFWFPS/SFWFPS/refs/heads/photos/arvenplush.png';
 
 let floorPixels = null;
@@ -2187,13 +2188,16 @@ function draw() {
         wallX -= Math.floor(wallX);
         const wallTex = hit === 9 ? pCanvas : tex;
         
+        let texW = wallTex.naturalWidth || wallTex.width;
+        let texH = wallTex.naturalHeight || wallTex.height;
+        
         // --- OPTIMIZED WALL SHADOW RENDERING ---
-        if (wallTex.width > 0) {
-            let texX = Math.floor(wallX * wallTex.width);
+        if (texW > 0) {
+            let texX = Math.floor(wallX * texW);
             
             // Draw the wall completely opaque to prevent sky/floor bleed
             ctx.globalAlpha = 1.0;
-            ctx.drawImage(wallTex, texX, 0, 1, wallTex.height, i, 150 - h/2, 1, h);
+            ctx.drawImage(wallTex, texX, 0, 1, texH, i, 150 - h/2, 1, h);
             
             // Calculate distance shadow
             let shadowAlpha = Math.min(0.95, (perpWallDist / 12));
