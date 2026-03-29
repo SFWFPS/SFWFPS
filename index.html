@@ -127,6 +127,7 @@
             height: 100%; 
             image-rendering: pixelated; 
             display: block; 
+            -webkit-filter: contrast(1.15) brightness(1.1) drop-shadow(0 0 8px rgba(255, 105, 180, 0.15));
             filter: contrast(1.15) brightness(1.1) drop-shadow(0 0 8px rgba(255, 105, 180, 0.15));
         }
 
@@ -190,6 +191,7 @@
             bottom: -10px;
             left: -10px;
             font-size: 28px;
+            -webkit-filter: drop-shadow(0 0 8px var(--sky));
             filter: drop-shadow(0 0 8px var(--sky));
             transition: transform 0.2s;
             z-index: 16;
@@ -504,6 +506,7 @@
             box-shadow: inset 0 0 15px rgba(255, 20, 147, 0.2);
         }
         .toy-slot.unlocked:hover {
+            -webkit-animation: pulse 1.2s infinite;
             animation: pulse 1.2s infinite;
             border-color: #fff;
             box-shadow: inset 0 0 20px rgba(255, 20, 147, 0.4), 0 0 15px rgba(255, 20, 147, 0.6);
@@ -520,15 +523,31 @@
             padding: 4px;
         }
 
-        /* RAINBOW SKIN ANIMATIONS */
+        /* RAINBOW SKIN ANIMATIONS - IOS SAFE */
+        @-webkit-keyframes rainbow-hue {
+            0% { -webkit-filter: hue-rotate(0deg) drop-shadow(0 0 12px var(--sky)); filter: hue-rotate(0deg) drop-shadow(0 0 12px var(--sky)); }
+            100% { -webkit-filter: hue-rotate(360deg) drop-shadow(0 0 12px var(--sky)); filter: hue-rotate(360deg) drop-shadow(0 0 12px var(--sky)); }
+        }
         @keyframes rainbow-hue {
-            0% { filter: hue-rotate(0deg) drop-shadow(0 0 12px var(--sky)); }
-            100% { filter: hue-rotate(360deg) drop-shadow(0 0 12px var(--sky)); }
+            0% { -webkit-filter: hue-rotate(0deg) drop-shadow(0 0 12px var(--sky)); filter: hue-rotate(0deg) drop-shadow(0 0 12px var(--sky)); }
+            100% { -webkit-filter: hue-rotate(360deg) drop-shadow(0 0 12px var(--sky)); filter: hue-rotate(360deg) drop-shadow(0 0 12px var(--sky)); }
         }
         .rainbow-anim {
+            -webkit-animation: rainbow-hue 3s linear infinite;
             animation: rainbow-hue 3s linear infinite;
+            -webkit-transform: translateZ(0); /* Hardware Acceleration for iOS */
+            transform: translateZ(0);
+            will-change: filter, -webkit-filter;
         }
 
+        @-webkit-keyframes rgb-border-anim {
+            0%   { border-color: hsl(0, 100%, 50%); box-shadow: inset 0 0 15px hsla(0, 100%, 50%, 0.3), 0 0 15px hsla(0, 100%, 50%, 0.6); }
+            20%  { border-color: hsl(72, 100%, 50%); box-shadow: inset 0 0 15px hsla(72, 100%, 50%, 0.3), 0 0 15px hsla(72, 100%, 50%, 0.6); }
+            40%  { border-color: hsl(144, 100%, 50%); box-shadow: inset 0 0 15px hsla(144, 100%, 50%, 0.3), 0 0 15px hsla(144, 100%, 50%, 0.6); }
+            60%  { border-color: hsl(216, 100%, 50%); box-shadow: inset 0 0 15px hsla(216, 100%, 50%, 0.3), 0 0 15px hsla(216, 100%, 50%, 0.6); }
+            80%  { border-color: hsl(288, 100%, 50%); box-shadow: inset 0 0 15px hsla(288, 100%, 50%, 0.3), 0 0 15px hsla(288, 100%, 50%, 0.6); }
+            100% { border-color: hsl(360, 100%, 50%); box-shadow: inset 0 0 15px hsla(360, 100%, 50%, 0.3), 0 0 15px hsla(360, 100%, 50%, 0.6); }
+        }
         @keyframes rgb-border-anim {
             0%   { border-color: hsl(0, 100%, 50%); box-shadow: inset 0 0 15px hsla(0, 100%, 50%, 0.3), 0 0 15px hsla(0, 100%, 50%, 0.6); }
             20%  { border-color: hsl(72, 100%, 50%); box-shadow: inset 0 0 15px hsla(72, 100%, 50%, 0.3), 0 0 15px hsla(72, 100%, 50%, 0.6); }
@@ -538,9 +557,13 @@
             100% { border-color: hsl(360, 100%, 50%); box-shadow: inset 0 0 15px hsla(360, 100%, 50%, 0.3), 0 0 15px hsla(360, 100%, 50%, 0.6); }
         }
         .toy-slot.rgb-border-active {
+            -webkit-animation: rgb-border-anim 3s linear infinite !important;
             animation: rgb-border-anim 3s linear infinite !important;
+            -webkit-transform: translateZ(0); /* Hardware Acceleration for iOS */
+            transform: translateZ(0);
         }
         .toy-slot.rgb-border-active:hover {
+            -webkit-animation: rgb-border-anim 3s linear infinite, pulse 1.2s infinite !important;
             animation: rgb-border-anim 3s linear infinite, pulse 1.2s infinite !important;
         }
 
@@ -1100,8 +1123,8 @@ function showGalleryMenu() {
         }
 
         let emojiHTML = p.isImage
-            ? `<img src="${p.url}" style="width:42px;height:42px;margin-bottom:6px;filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'}; border-radius: 8px;">`
-            : `<div style="font-size:42px;margin-bottom:6px;filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};">${p.emoji}</div>`;
+            ? `<img src="${p.url}" style="width:42px;height:42px;margin-bottom:6px;-webkit-filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'}; border-radius: 8px;">`
+            : `<div style="font-size:42px;margin-bottom:6px;-webkit-filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};filter:${isCollected?'drop-shadow(0 0 8px #4fc3f7)':'grayscale(1) brightness(0.7)'};">${p.emoji}</div>`;
 
         slot.innerHTML = `
             ${emojiHTML}
@@ -1170,7 +1193,7 @@ function showToyboxMenu() {
         const isRainbowBox = (emoji === "🎵" && rainbowBoxEnabled && isUnlocked);
         const isRainbowSkinActive = isRainbowWand || isRainbowMilk || isRainbowPillow || isRainbowBox;
         
-        const filterStyle = isRainbowSkinActive ? '' : `filter:${isUnlocked ? 'drop-shadow(0 0 12px var(--hot-pink))' : 'grayscale(1) brightness(0.4)'};`;
+        const filterStyle = isRainbowSkinActive ? '' : `-webkit-filter:${isUnlocked ? 'drop-shadow(0 0 12px var(--hot-pink))' : 'grayscale(1) brightness(0.4)'}; filter:${isUnlocked ? 'drop-shadow(0 0 12px var(--hot-pink))' : 'grayscale(1) brightness(0.4)'};`;
         
         let displayName = data.name;
         let displayDesc = TOY_DESCRIPTIONS[emoji];
