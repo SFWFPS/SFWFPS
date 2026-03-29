@@ -393,7 +393,7 @@
         .overlay { 
             display: none; position: fixed; inset: 0; 
             background: radial-gradient(circle, rgba(45, 27, 46, 0.97) 0%, rgba(0,0,0,0.99) 100%); 
-            z-index: 10000; color: white; flex-direction: column; align-items: center; justify-content: flex-start; 
+            z-index: 10005; color: white; flex-direction: column; align-items: center; justify-content: flex-start; 
             text-align: center; backdrop-filter: blur(12px);
             border: 6px solid var(--hot-pink); box-shadow: inset 0 0 60px rgba(255, 20, 147, 0.4);
             overflow-y: auto;
@@ -752,7 +752,7 @@
     </div>
 
 <script>
-// --- FULLSCREEN HELPER ---
+// --- FULLSCREEN HELPER (UPDATED FOR iOS SAFARI STABILITY) ---
 function enterFullscreen() {
     const doc = window.document, docEl = doc.documentElement, vp = document.getElementById('viewport');
     const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
@@ -760,15 +760,53 @@ function enterFullscreen() {
     if (!currentlyFullscreen) {
         const request = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
         if (request) {
-            request.call(docEl).catch(() => {
-                vp.classList.add('ios-fullscreen-fix');
-                window.scrollTo(0, 0);
-            });
+            try {
+                let promise = request.call(docEl);
+                if (promise !== undefined && promise.catch) {
+                    promise.catch(() => applyiOSFullscreenFallback(vp));
+                }
+            } catch(e) {
+                // Safari on iPhone throws a synchronous TypeError here.
+                applyiOSFullscreenFallback(vp);
+            }
         } else {
-            vp.classList.add('ios-fullscreen-fix');
-            window.scrollTo(0, 0);
+            applyiOSFullscreenFallback(vp);
         }
     }
+}
+
+function toggleFullscreen() {
+    const doc = window.document, docEl = doc.documentElement, vp = document.getElementById('viewport');
+    const request = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
+    const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+    const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+
+    if (currentlyFullscreen) {
+        if (cancel) cancel.call(doc);
+        vp.classList.remove('ios-fullscreen-fix');
+    } else if (vp.classList.contains('ios-fullscreen-fix')) {
+        vp.classList.remove('ios-fullscreen-fix');
+    } else {
+        if (request) {
+            try {
+                let promise = request.call(docEl);
+                if (promise !== undefined && promise.catch) {
+                    promise.catch(() => applyiOSFullscreenFallback(vp));
+                }
+            } catch(e) {
+                applyiOSFullscreenFallback(vp);
+            }
+        } else {
+            applyiOSFullscreenFallback(vp);
+        }
+    }
+}
+
+function applyiOSFullscreenFallback(el) {
+    el.classList.add('ios-fullscreen-fix');
+    window.scrollTo(0, 0);
+    // Slight delay to ensure Safari layout reflow is complete before attempting to hide address bar
+    setTimeout(() => window.scrollTo(0, 1), 50);
 }
 
 // --- PROCEDURAL PARALLAX SKYBOX ---
@@ -1252,6 +1290,7 @@ function getSpeedMult() {
 function handleOrientationChange(e) {
     if (e.matches && isMobileDevice && gameActive && !paused) {
         enterFullscreen();
+        setTimeout(() => window.scrollTo(0, 1), 100); // Safari address bar hide push
     }
 }
 orientationMedia.addEventListener("change", handleOrientationChange);
@@ -1261,22 +1300,6 @@ function togglePause() {
     paused = !paused;
     document.getElementById('pause-menu').style.display = paused ? 'flex' : 'none';
     if (audioCtx) paused ? audioCtx.suspend() : audioCtx.resume();
-}
-
-function toggleFullscreen() {
-    const doc = window.document, docEl = doc.documentElement, vp = document.getElementById('viewport');
-    const request = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
-    const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
-    if (request) {
-        if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-            request.call(docEl).catch(() => applyiOSFullscreenFallback(vp));
-        } else if (cancel) cancel.call(doc);
-    } else applyiOSFullscreenFallback(vp);
-}
-
-function applyiOSFullscreenFallback(el) {
-    el.classList.toggle('ios-fullscreen-fix');
-    if (el.classList.contains('ios-fullscreen-fix')) window.scrollTo(0, 0);
 }
 
 function selectDifficulty(mult) {
