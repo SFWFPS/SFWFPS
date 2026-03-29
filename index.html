@@ -617,11 +617,6 @@
     </div>
 
 <script>
-// --- GAME RESOLUTION UPGRADE ---
-const WIDTH = 640;
-const HEIGHT = 480;
-// -------------------------------------------------------
-
 // --- OBJECT POOL FOR PARTICLES ---
 const MAX_PARTICLES = 400;
 const particlePool = Array.from({ length: MAX_PARTICLES }, () => ({
@@ -663,9 +658,7 @@ const pCanvas = document.createElement('canvas');
 pCanvas.width = 256; pCanvas.height = 256;
 const pCtx = pCanvas.getContext('2d');
 
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
-mCanvas.width = 80; mCanvas.height = 80;
+canvas.width = 400; canvas.height = 300; mCanvas.width = 80; mCanvas.height = 80;
 
 let displayList = [];                      
 let lastHP = -1, lastScoreText = '', lastHi = -1, lastMultText = '', lastCombo = -1;
@@ -763,7 +756,6 @@ function showScoresMenu() {
         : scores.map((s, i) => `<div class="score-row"><span>${(i+1).toString().padStart(2,'0')}. ${s.name}</span> <span style="color:var(--pink); text-shadow: 0 0 5px var(--pink);">${s.score}</span></div>`).join('');
     document.getElementById('scores-list').innerHTML = html;
     document.getElementById('scores-menu').style.display = 'flex';
-    ensureFullscreenIfLandscape();
 }
 
 function hideScoresMenu() { document.getElementById('scores-menu').style.display = 'none'; }
@@ -802,7 +794,6 @@ function showGalleryMenu() {
         grid.appendChild(slot);
     });
     document.getElementById('gallery-menu').style.display = 'flex';
-    ensureFullscreenIfLandscape();
 }
 
 function hideGalleryMenu() { document.getElementById('gallery-menu').style.display = 'none'; }
@@ -885,6 +876,7 @@ function showToyboxMenu() {
         grid.appendChild(slot);
     }
 
+    // APPEND RAINBOW SKIN TOGGLE SLOTS
     let collection = JSON.parse(localStorage.getItem('plushieCollection') || '[]');
     if (collection.length >= 12) {
         grid.appendChild(createRainbowSlot("🪄", "Rainbow Wand", "Legendary skin unlocked!", rainbowWandEnabled, "toggleRainbowWand"));
@@ -900,7 +892,6 @@ function showToyboxMenu() {
     }
     
     document.getElementById('toybox-menu').style.display = 'flex';
-    ensureFullscreenIfLandscape();
 }
 
 function toggleRainbowWand(e) {
@@ -989,7 +980,7 @@ const MAPS = [
 ];
 
 let levelIdx = 0, player, sprites = [], projectiles = [], keys = {};
-let zBuf = new Float32Array(WIDTH);
+let zBuf = new Float32Array(400);
 let gameActive = false, attackAnim = 0, shake = 0, bob = 0, isMoving = false, isLoading = false, maxMultSeen = 1;
 let levelTransitioning = false, portalActive = false, hitFlash = 0;
 let difficultyMult = 1.5;
@@ -1021,28 +1012,17 @@ const viewportEl = document.getElementById('viewport');
 const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 2) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const orientationMedia = window.matchMedia("(orientation: landscape)");
 
-// ====================
-// LANDSCAPE AUTOFULLSCREEN ON EVERY SCREEN (fixed for start/victory menus)
-// ====================
-function ensureFullscreenIfLandscape() {
-    if (!isMobileDevice || !orientationMedia.matches) return;
-    const doc = window.document;
-    const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-    if (!currentlyFullscreen) {
-        toggleFullscreen();
-    }
-}
-
 function handleOrientationChange(e) {
-    if (e.matches && isMobileDevice) {
-        ensureFullscreenIfLandscape();
+    if (e.matches && isMobileDevice && gameActive && !paused) {
+        const doc = window.document;
+        const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+        if (!currentlyFullscreen) toggleFullscreen();
     }
 }
 orientationMedia.addEventListener("change", handleOrientationChange);
 
-// Initial check (safe for start menu)
 if (orientationMedia.matches && isMobileDevice) {
-    setTimeout(ensureFullscreenIfLandscape, 800);
+    setTimeout(() => { if (gameActive && !paused) toggleFullscreen(); }, 1200);
 }
 
 function togglePause() {
@@ -1058,16 +1038,9 @@ function toggleFullscreen() {
     const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
     if (request) {
         if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-            request.call(docEl).catch(() => {
-                // Only apply iOS fallback when actually in-game (prevents start-menu being covered by black viewport)
-                if (gameActive) {
-                    applyiOSFullscreenFallback(vp);
-                }
-            });
+            request.call(docEl).catch(() => applyiOSFullscreenFallback(vp));
         } else if (cancel) cancel.call(doc);
-    } else if (gameActive) {
-        applyiOSFullscreenFallback(vp);
-    }
+    } else applyiOSFullscreenFallback(vp);
 }
 
 function applyiOSFullscreenFallback(el) {
@@ -1090,7 +1063,6 @@ function returnToMenu() {
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('pause-menu').style.display = 'none';
     document.getElementById('start-menu').style.display = 'flex';
-    ensureFullscreenIfLandscape();   // ← fixed: re-ensure fullscreen for start menu
 }
 
 function initGame() {
@@ -1415,6 +1387,7 @@ function showEnd(msg) {
     let statsHTML = `Final Score: ${currentScore}<br><span style="color:var(--pink);">Best: ${highScore}</span>`;
     
     if (isWin) {
+        // Unlock Rainbow Skins dynamically
         if (difficultyMult === 1.0 && !rainbowMilkUnlocked) {
             localStorage.setItem('rainbowMilkUnlocked', 'true');
             rainbowMilkUnlocked = true;
@@ -1449,7 +1422,6 @@ function showEnd(msg) {
             window.open(`https://x.com/intent/post?text=${encodeURIComponent(fullPost)}`, '_blank');
         });
     };
-    ensureFullscreenIfLandscape();   // ← fixed: re-enter fullscreen for victory menu
 }
 
 document.getElementById('retry-btn').onclick = returnToMenu;
@@ -1740,31 +1712,31 @@ function updatePortalTexture() {
 function draw() {
     if (portalActive) updatePortalTexture();
     ctx.save();
-    let currentBob = Math.sin(bob) * 18;
+    let currentBob = Math.sin(bob) * 11;
     ctx.translate(0, currentBob);
     if (shake > 0) ctx.translate((Math.random()-0.5)*22*shake, (Math.random()-0.5)*22*shake);
 
     if (!cachedFloorGrad) {
-        cachedFloorGrad = ctx.createLinearGradient(0, 240, 0, 480);
+        cachedFloorGrad = ctx.createLinearGradient(0, 150, 0, 350);
         cachedFloorGrad.addColorStop(0, '#111'); cachedFloorGrad.addColorStop(1, '#000');
     }
     if (cachedSkyLevel !== levelIdx) {
-        cachedSkyGrad = ctx.createLinearGradient(0, -160, 0, 240);
+        cachedSkyGrad = ctx.createLinearGradient(0, -100, 0, 160);
         cachedSkyGrad.addColorStop(0, levelIdx === 4 ? '#0a0825' : '#87CEEB');
         cachedSkyGrad.addColorStop(1, '#221122');
         cachedSkyLevel = levelIdx;
     }
 
-    ctx.fillStyle = cachedSkyGrad; ctx.fillRect(0, -160, WIDTH, 416);
-    ctx.fillStyle = cachedFloorGrad; ctx.fillRect(0, 240, WIDTH, 240);
+    ctx.fillStyle = cachedSkyGrad; ctx.fillRect(0, -100, 400, 260);
+    ctx.fillStyle = cachedFloorGrad; ctx.fillRect(0, 150, 400, 200);
 
     const map = MAPS[levelIdx].m, tex = MAPS[levelIdx].tex;
     const FOV = 0.66;
     const cosDir = Math.cos(player.dir), sinDir = Math.sin(player.dir);
     const cosDir90 = Math.cos(player.dir + Math.PI/2), sinDir90 = Math.sin(player.dir + Math.PI/2);
 
-    for (let i = 0; i < WIDTH; i++) {
-        let cameraX = 2 * i / WIDTH - 1;
+    for (let i = 0; i < 400; i++) {
+        let cameraX = 2 * i / 400 - 1;
         let rayDirX = cosDir + cosDir90 * cameraX * FOV;
         let rayDirY = sinDir + sinDir90 * cameraX * FOV;
         let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
@@ -1781,15 +1753,15 @@ function draw() {
         }
         let perpWallDist = side === 0 ? sideDistX - deltaDistX : sideDistY - deltaDistY;
         zBuf[i] = perpWallDist;
-        let h = HEIGHT / perpWallDist;
+        let h = 300 / perpWallDist;
         let wallX = side === 0 ? player.y + perpWallDist * rayDirY : player.x + perpWallDist * rayDirX;
         wallX -= Math.floor(wallX);
         const wallTex = hit === 9 ? pCanvas : tex;
         if (wallTex.width > 0) {
             let texX = Math.floor(wallX * wallTex.width);
             ctx.globalAlpha = Math.max(0.18, 1 - (perpWallDist / 12));
-            ctx.drawImage(wallTex, texX, 0, 1, wallTex.height, i, 240 - h/2, 1, h);
-            if (side === 1 && hit !== 9) { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(i, 240 - h/2, 1, h); }
+            ctx.drawImage(wallTex, texX, 0, 1, wallTex.height, i, 150 - h/2, 1, h);
+            if (side === 1 && hit !== 9) { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(i, 150 - h/2, 1, h); }
             ctx.globalAlpha = 1;
         }
     }
@@ -1823,31 +1795,31 @@ function draw() {
         while (ang > Math.PI) ang -= Math.PI*2;
         if (Math.abs(ang) >= 2.0) return;
 
-        let sx = (ang / 1.2 + 0.5) * WIDTH;
-        let zIndex = Math.max(0, Math.min(WIDTH-1, Math.floor(sx)));
+        let sx = (ang / 1.2 + 0.5) * 400;
+        let zIndex = Math.max(0, Math.min(399, Math.floor(sx)));
         if (zBuf[zIndex] <= dist) return;
 
-        let sz = HEIGHT / Math.max(dist, 0.25) * (s.scale || (s.pickup ? 1.4 : (s.type === 'boss' ? 2.6 : 1)));
+        let sz = 300 / Math.max(dist, 0.25) * (s.scale || (s.pickup ? 1.4 : (s.type === 'boss' ? 2.6 : 1)));
         sz = Math.max(1, Math.round(sz));
 
         if (s.l !== undefined) ctx.globalAlpha = s.l > 0.2 ? 1 : s.l * 5;
         else ctx.globalAlpha = 1;
 
-        if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 240 - sz/2, sz, sz);
-        else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 240 - sz/2, sz, sz);
-        else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 240 - sz/2, sz, sz);
-        else if (s.e === "🐘") ctx.drawImage(s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle, sx - sz/2, 240 - sz/2, sz, sz);
+        if (s.e === "BEAR") ctx.drawImage(s.atkTimer > 0 ? assets.bearAtk : assets.bearIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        else if (s.e === "SMALL") ctx.drawImage(s.atkTimer > 0 ? assets.smallAtk : assets.smallIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        else if (s.e === "PRED") ctx.drawImage(s.atkTimer > 0 ? assets.predAtk : assets.predIdle, sx - sz/2, 150 - sz/2, sz, sz);
+        else if (s.e === "🐘") ctx.drawImage(s.atkTimer > 0 ? assets.elephantAtk : assets.elephantIdle, sx - sz/2, 150 - sz/2, sz, sz);
         else if (s.e === "BOSS_FINAL") {
             let bossImg = assets.bossIdle;
             let sxOffset = 0;
             if (s.isPhase2) { bossImg = assets.bossPhase2; sxOffset = (Math.random() - 0.5) * 8; }
             else if (s.atkTimer > 0) bossImg = assets.bossAtk;
-            ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 240 - sz/2, sz, sz);
+            ctx.drawImage(bossImg, (sx + sxOffset) - sz/2, 150 - sz/2, sz, sz);
         } else {
             if (!s.isParticle && !s.isProj) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
                 ctx.beginPath();
-                ctx.ellipse(sx, 240 + sz/2 - sz*0.05, sz*0.3, sz*0.08, 0, 0, Math.PI*2);
+                ctx.ellipse(sx, 150 + sz/2 - sz*0.05, sz*0.3, sz*0.08, 0, 0, Math.PI*2);
                 ctx.fill();
             }
 
@@ -1866,7 +1838,7 @@ function draw() {
 
             ctx.font = `${sz}px serif`;
             ctx.textAlign = "center";
-            ctx.fillText(s.e || "✨", sx, 240 + sz/2);
+            ctx.fillText(s.e || "✨", sx, 150 + sz/2);
 
             if (s.pickup) {
                 ctx.shadowBlur = 0;
@@ -1879,7 +1851,7 @@ function draw() {
 
     if (hitFlash > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${hitFlash * 0.3})`;
-        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        ctx.fillRect(0, 0, 400, 300);
         hitFlash -= 0.1;
     }
 
@@ -1898,7 +1870,7 @@ function draw() {
             wandRot = Math.sin(t * Math.PI) * 1.5;
         } else if (currentToy === "🎵") wandAtkY = Math.sin(t * Math.PI) * -20;
     }
-    ctx.translate(WIDTH / 2 + wandSway + wandAtkX, HEIGHT - 25 + currentBob + wandAtkY);
+    ctx.translate(200 + wandSway + wandAtkX, 275 + currentBob + wandAtkY);
     ctx.rotate(wandRot);
     ctx.font = "145px serif";
     ctx.textAlign = "center";
@@ -1920,9 +1892,8 @@ function draw() {
     if (currentToy !== "🪄") {
         ctx.font = "24px 'Arial Rounded MT Bold', sans-serif";
         ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
-        const ammoX = WIDTH * 0.625;
-        ctx.strokeText(toyAmmo[currentToy], ammoX + wandSway, HEIGHT - 50 + currentBob);
-        ctx.fillText(toyAmmo[currentToy], ammoX + wandSway, HEIGHT - 50 + currentBob);
+        ctx.strokeText(toyAmmo[currentToy], 250 + wandSway, 250 + currentBob);
+        ctx.fillText(toyAmmo[currentToy], 250 + wandSway, 250 + currentBob);
     }
     ctx.restore();
 
