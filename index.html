@@ -720,6 +720,25 @@
     </div>
 
 <script>
+// --- FULLSCREEN HELPER ---
+function enterFullscreen() {
+    const doc = window.document, docEl = doc.documentElement, vp = document.getElementById('viewport');
+    const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+    
+    if (!currentlyFullscreen) {
+        const request = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozFullScreenElement || docEl.msRequestFullscreen;
+        if (request) {
+            request.call(docEl).catch(() => {
+                vp.classList.add('ios-fullscreen-fix');
+                window.scrollTo(0, 0);
+            });
+        } else {
+            vp.classList.add('ios-fullscreen-fix');
+            window.scrollTo(0, 0);
+        }
+    }
+}
+
 // --- OBJECT POOL FOR PARTICLES ---
 const MAX_PARTICLES = 400;
 const particlePool = Array.from({ length: MAX_PARTICLES }, () => ({
@@ -873,7 +892,6 @@ function submitHighScore() {
     
     document.getElementById('name-entry-menu').style.display = 'none';
     
-    // Victory fanfare
     playSound('sine', 880, 150, 0.25);
     setTimeout(() => playSound('sine', 1100, 250, 0.25), 150);
     
@@ -960,7 +978,6 @@ const TOY_DESCRIPTIONS = {
 
 function createRainbowSlot(emoji, title, desc, isEnabled, toggleFuncName) {
     const slot = document.createElement('div');
-    // Using default 'unlocked' for standard hot-pink border, 'rgb-border-active' when toggled ON
     slot.className = `toy-slot unlocked ${isEnabled ? 'rgb-border-active' : ''}`;
     
     slot.innerHTML = `
@@ -1145,16 +1162,10 @@ function getSpeedMult() {
 
 function handleOrientationChange(e) {
     if (e.matches && isMobileDevice && gameActive && !paused) {
-        const doc = window.document;
-        const currentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-        if (!currentlyFullscreen) toggleFullscreen();
+        enterFullscreen();
     }
 }
 orientationMedia.addEventListener("change", handleOrientationChange);
-
-if (orientationMedia.matches && isMobileDevice) {
-    setTimeout(() => { if (gameActive && !paused) toggleFullscreen(); }, 1200);
-}
 
 function togglePause() {
     if (!gameActive || isLoading) return;
@@ -1180,6 +1191,7 @@ function applyiOSFullscreenFallback(el) {
 }
 
 function selectDifficulty(mult) {
+    if (isMobileDevice) enterFullscreen();
     difficultyMult = mult;
     document.getElementById('start-menu').style.display = 'none';
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
